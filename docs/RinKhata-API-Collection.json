@@ -1,0 +1,406 @@
+{
+  "info": {
+    "name": "RinKhata API",
+    "description": "Complete API collection for RinKhata Loan Tracking System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/register",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo@rinkhata.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/auth/me",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "auth", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wallets",
+      "item": [
+        {
+          "name": "Get All Wallets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/wallets",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "wallets"]
+            }
+          }
+        },
+        {
+          "name": "Get Single Wallet",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/wallets/{{walletId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "wallets", "{{walletId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nagad\",\n  \"type\": \"mfs\",\n  \"balance\": 10000,\n  \"currency\": \"BDT\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/wallets",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "wallets"]
+            }
+          }
+        },
+        {
+          "name": "Update Wallet",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nagad Updated\",\n  \"balance\": 15000\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/wallets/{{walletId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "wallets", "{{walletId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Wallet",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/wallets/{{walletId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "wallets", "{{walletId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Loans",
+      "item": [
+        {
+          "name": "Get All Loans",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/loans",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "loans"]
+            }
+          }
+        },
+        {
+          "name": "Get Loan Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/loans/stats",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "loans", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Get Single Loan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/loans/{{loanId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "loans", "{{loanId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Loan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"personName\": \"John Doe\",\n  \"personContact\": \"+8801712345678\",\n  \"principalAmount\": 5000,\n  \"walletId\": \"{{walletId}}\",\n  \"loanType\": \"Lent\",\n  \"purposeNote\": \"Emergency loan\",\n  \"dueDate\": \"2026-04-30\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/loans",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "loans"]
+            }
+          }
+        },
+        {
+          "name": "Update Loan",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"personName\": \"John Doe Updated\",\n  \"purposeNote\": \"Updated purpose\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/loans/{{loanId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "loans", "{{loanId}}"]
+            }
+          }
+        },
+        {
+          "name": "Pay Loan",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentAmount\": 1000,\n  \"walletId\": \"{{walletId}}\",\n  \"note\": \"Partial payment\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/loans/{{loanId}}/pay",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "loans", "{{loanId}}", "pay"]
+            }
+          }
+        },
+        {
+          "name": "Delete Loan",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/loans/{{loanId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "loans", "{{loanId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "Get All Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/transactions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "transactions"]
+            }
+          }
+        },
+        {
+          "name": "Get Transactions by Loan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/transactions?loanId={{loanId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "transactions"],
+              "query": [
+                {
+                  "key": "loanId",
+                  "value": "{{loanId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

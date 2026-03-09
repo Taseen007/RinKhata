@@ -63,19 +63,19 @@ export const createWalletValidator: ValidationChain[] = [
 
 // Loan validators
 export const createLoanValidator: ValidationChain[] = [
-  body('borrowerName')
+  body('personName')
     .trim()
     .notEmpty()
-    .withMessage('Borrower name is required')
+    .withMessage('Person name is required')
     .isLength({ max: 100 })
-    .withMessage('Borrower name cannot exceed 100 characters'),
-  body('borrowerContact')
+    .withMessage('Person name cannot exceed 100 characters'),
+  body('personContact')
     .trim()
     .notEmpty()
-    .withMessage('Borrower contact is required')
+    .withMessage('Person contact is required')
     .isLength({ max: 100 })
-    .withMessage('Borrower contact cannot exceed 100 characters'),
-  body('totalAmount')
+    .withMessage('Person contact cannot exceed 100 characters'),
+  body('principalAmount')
     .notEmpty()
     .withMessage('Loan amount is required')
     .isNumeric()
@@ -87,6 +87,20 @@ export const createLoanValidator: ValidationChain[] = [
     .withMessage('Wallet ID is required')
     .isMongoId()
     .withMessage('Invalid wallet ID'),
+  body('loanType')
+    .notEmpty()
+    .withMessage('Loan type is required')
+    .isIn(['Lent', 'Borrowed'])
+    .withMessage('Loan type must be Lent or Borrowed'),
+  body('purposeNote')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Purpose note cannot exceed 500 characters'),
+  body('dueDate')
+    .optional()
+    .isISO8601()
+    .withMessage('Due date must be a valid date'),
 ];
 
 export const payLoanValidator: ValidationChain[] = [
