@@ -5,7 +5,8 @@ export interface ITransaction extends Document {
   walletId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   amount: number;
-  type: 'loan_given' | 'payment_received';
+  type: 'Payment' | 'Loan';
+  date: Date;
   note?: string;
   createdAt: Date;
 }
@@ -35,10 +36,15 @@ const transactionSchema = new Schema<ITransaction>(
     type: {
       type: String,
       enum: {
-        values: ['loan_given', 'payment_received'],
+        values: ['Payment', 'Loan'],
         message: '{VALUE} is not a valid transaction type',
       },
       required: [true, 'Transaction type is required'],
+    },
+    date: {
+      type: Date,
+      required: [true, 'Transaction date is required'],
+      default: Date.now,
     },
     note: {
       type: String,

@@ -102,14 +102,17 @@ export const createLoan = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    const { borrowerName, borrowerContact, totalAmount, walletId } = req.body;
+    const { personName, personContact, principalAmount, walletId, loanType, purposeNote, dueDate } = req.body;
 
     const loan = await createLoanWithTransaction(
       req.user._id,
-      borrowerName,
-      borrowerContact,
-      totalAmount,
-      walletId
+      personName,
+      personContact,
+      principalAmount,
+      walletId,
+      loanType,
+      purposeNote,
+      dueDate
     );
 
     res.status(201).json({
@@ -143,10 +146,12 @@ export const updateLoan = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    const { borrowerName, borrowerContact } = req.body;
+    const { personName, personContact, purposeNote, dueDate } = req.body;
 
-    if (borrowerName) loan.borrowerName = borrowerName;
-    if (borrowerContact) loan.borrowerContact = borrowerContact;
+    if (personName) loan.personName = personName;
+    if (personContact) loan.personContact = personContact;
+    if (purposeNote) loan.purposeNote = purposeNote;
+    if (dueDate) loan.dueDate = dueDate;
 
     await loan.save();
 

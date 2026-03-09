@@ -2,11 +2,17 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ILoan extends Document {
   userId: mongoose.Types.ObjectId;
-  borrowerName: string;
-  borrowerContact: string;
-  totalAmount: number;
-  remainingAmount: number;
-  status: 'active' | 'settled';
+  walletId: mongoose.Types.ObjectId;
+  personName: string;
+  personContact: string;
+  loanType: 'Lent' | 'Borrowed';
+  principalAmount: number;
+  paidAmount: number;
+  balanceAmount: number;
+  purposeNote?: string;
+  loanDate: Date;
+  dueDate?: Date;
+  status: 'Active' | 'Settled';
   createdAt: Date;
 }
 
@@ -17,35 +23,67 @@ const loanSchema = new Schema<ILoan>(
       ref: 'User',
       required: [true, 'User ID is required'],
     },
-    borrowerName: {
+    walletId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Wallet',
+      required: [true, 'Wallet ID is required'],
+    },
+    personName: {
       type: String,
-      required: [true, 'Borrower name is required'],
+      required: [true, 'Person name is required'],
       trim: true,
-      maxlength: [100, 'Borrower name cannot exceed 100 characters'],
+      maxlength: [100, 'Person name cannot exceed 100 characters'],
     },
-    borrowerContact: {
+    personContact: {
       type: String,
-      required: [true, 'Borrower contact is required'],
+      required: [true, 'Person contact is required'],
       trim: true,
-      maxlength: [100, 'Borrower contact cannot exceed 100 characters'],
+      maxlength: [100, 'Person contact cannot exceed 100 characters'],
     },
-    totalAmount: {
-      type: Number,
-      required: [true, 'Loan amount is required'],
-      min: [1, 'Loan amount must be greater than 0'],
+    loanType: {
+      type: String,
+      enum: {
+        values: ['Lent', 'Borrowed'],
+        message: '{VALUE} is not a valid loan type',
+      },
+      required: [true, 'Loan type is required'],
     },
-    remainingAmount: {
+    principalAmount: {
       type: Number,
-      required: [true, 'Remaining amount is required'],
-      min: [0, 'Remaining amount cannot be negative'],
+      required: [true, 'Principal amount is required'],
+      min: [1, 'Principal amount must be greater than 0'],
+    },
+    paidAmount: {
+      type: Number,
+      required: [true, 'Paid amount is required'],
+      default: 0,
+      min: [0, 'Paid amount cannot be negative'],
+    },
+    balanceAmount: {
+      type: Number,
+      required: [true, 'Balance amount is required'],
+      min: [0, 'Balance amount cannot be negative'],
+    },
+    purposeNote: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Purpose note cannot exceed 500 characters'],
+    },
+    loanDate: {
+      type: Date,
+      required: [true, 'Loan date is required'],
+      default: Date.now,
+    },
+    dueDate: {
+      type: Date,
     },
     status: {
       type: String,
       enum: {
-        values: ['active', 'settled'],
+        values: ['Active', 'Settled'],
         message: '{VALUE} is not a valid status',
       },
-      default: 'active',
+      default: 'Active',
     },
   },
   {
@@ -54,12 +92,14 @@ const loanSchema = new Schema<ILoan>(
 );
 
 // Index for faster queries
-loanSchema.index({ userId: 1, status: 1, createdAt: -1 });
+loanSchema.index({ userId: 1, status: 1, loanDate: -1 });
 
-// Auto-update status when remainingAmount becomes 0
+// Auto-update status when balanceAmount becomes 0
 loanSchema.pre('save', function (next) {
-  if (this.remainingAmount === 0) {
-    this.status = 'settled';
+  if (this.balanceAmount === 0) {
+    this.status = 'Settled';
+  } else if (this.balanceAmount > 0) {
+    this.status = 'Active';
   }
   next();
 });

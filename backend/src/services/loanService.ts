@@ -6,10 +6,13 @@ import mongoose from 'mongoose';
 // Create a new loan with transaction
 export const createLoanWithTransaction = async (
   userId: string,
-  borrowerName: string,
-  borrowerContact: string,
-  totalAmount: number,
-  walletId: string
+  personName: string,
+  personContact: string,
+  principalAmount: number,
+  walletId: string,
+  loanType: 'Lent' | 'Borrowed',
+  purposeNote?: string,
+  dueDate?: Date
 ) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -21,8 +24,8 @@ export const createLoanWithTransaction = async (
       throw new Error('Wallet not found');
     }
 
-    // Check if wallet has sufficient balance
-    if (wallet.balance < totalAmount) {
+    // Check if wallet has sufficient balance for Lent type
+    if (loanType === 'Lent' && wallet.balance < principalAmount) {
       throw new Error('Insufficient wallet balance');
     }
 
@@ -31,18 +34,28 @@ export const createLoanWithTransaction = async (
       [
         {
           userId,
-          borrowerName,
-          borrowerContact,
-          totalAmount,
-          remainingAmount: totalAmount,
-          status: 'active',
+          walletId,
+          personName,
+          personContact,
+          loanType,
+          principalAmount,
+          paidAmount: 0,
+          balanceAmount: principalAmount,
+          purposeNote,
+          loanDate: new Date(),
+          dueDate,
+          status: 'Active',
         },
       ],
       { session }
     );
 
-    // Update wallet balance (deduct loan amount)
-    wallet.balance -= totalAmount;
+    // Update wallet balance based on loan type
+    if (loanType === 'Lent') {
+      wallet.balance -= principalAmount; // Money going out
+    } else {
+      wallet.balance += principalAmount; // Money coming in
+    }
     await wallet.save({ session });
 
     // Create transaction record
@@ -52,9 +65,10 @@ export const createLoanWithTransaction = async (
           loanId: loan[0]._id,
           walletId,
           userId,
-          amount: totalAmount,
-          type: 'loan_given',
-          note: `Loan given to ${borrowerName}`,
+          amount: principalAmount,
+          type: 'Loan',
+          date: new Date(),
+          note: purposeNote || `Loan ${loanType.toLowerCase()} - ${personName}`,
         },
       ],
       { session }
@@ -89,12 +103,12 @@ export const processLoanPayment = async (
     }
 
     // Check if loan is already settled
-    if (loan.status === 'settled') {
+    if (loan.status === 'Settled') {
       throw new Error('Loan is already settled');
     }
 
     // Check if payment amount exceeds remaining amount
-    if (paymentAmount > loan.remainingAmount) {
+    if (paymentAmount > loan.balanceAmount) {
       throw new Error('Payment amount exceeds remaining loan amount');
     }
 
@@ -104,15 +118,20 @@ export const processLoanPayment = async (
       throw new Error('Wallet not found');
     }
 
-    // Update loan remaining amount
-    loan.remainingAmount -= paymentAmount;
-    if (loan.remainingAmount === 0) {
-      loan.status = 'settled';
+    // Update loan amounts
+    loan.paidAmount += paymentAmount;
+    loan.balanceAmount -= paymentAmount;
+    if (loan.balanceAmount === 0) {
+      loan.status = 'Settled';
     }
     await loan.save({ session });
 
-    // Update wallet balance (add payment amount)
-    wallet.balance += paymentAmount;
+    // Update wallet balance based on loan type
+    if (loan.loanType === 'Lent') {
+      wallet.balance += paymentAmount; // Money coming back
+    } else {
+      wallet.balance -= paymentAmount; // Money going out to repay
+    }
     await wallet.save({ session });
 
     // Create transaction record
@@ -123,8 +142,9 @@ export const processLoanPayment = async (
           walletId,
           userId,
           amount: paymentAmount,
-          type: 'payment_received',
-          note: note || `Payment received from ${loan.borrowerName}`,
+          type: 'Payment',
+          date: new Date(),
+          note: note || `Payment for ${loan.loanType.toLowerCase()} - ${loan.personName}`,
         },
       ],
       { session }
@@ -144,20 +164,28 @@ export const processLoanPayment = async (
 export const getLoanStatistics = async (userId: string) => {
   const loans = await Loan.find({ userId });
 
-  const totalLent = loans.reduce((sum, loan) => sum + loan.totalAmount, 0);
-  const totalReceived = loans.reduce(
-    (sum, loan) => sum + (loan.totalAmount - loan.remainingAmount),
-    0
-  );
-  const totalRemaining = loans.reduce((sum, loan) => sum + loan.remainingAmount, 0);
-  const activeLoans = loans.filter((loan) => loan.status === 'active').length;
-  const settledLoans = loans.filter((loan) => loan.status === 'settled').length;
+  const lentLoans = loans.filter((loan) => loan.loanType === 'Lent');
+  const borrowedLoans = loans.filter((loan) => loan.loanType === 'Borrowed');
+
+  const totalLent = lentLoans.reduce((sum, loan) => sum + loan.principalAmount, 0);
+  const totalLentReceived = lentLoans.reduce((sum, loan) => sum + loan.paidAmount, 0);
+  const totalLentRemaining = lentLoans.reduce((sum, loan) => sum + loan.balanceAmount, 0);
+
+  const totalBorrowed = borrowedLoans.reduce((sum, loan) => sum + loan.principalAmount, 0);
+  const totalBorrowedPaid = borrowedLoans.reduce((sum, loan) => sum + loan.paidAmount, 0);
+  const totalBorrowedRemaining = borrowedLoans.reduce((sum, loan) => sum + loan.balanceAmount, 0);
+
+  const activeLoans = loans.filter((loan) => loan.status === 'Active').length;
+  const settledLoans = loans.filter((loan) => loan.status === 'Settled').length;
 
   return {
     totalLent,
-    totalReceived,
-    totalRemaining,
-    netBalance: totalReceived - totalLent,
+    totalLentReceived,
+    totalLentRemaining,
+    totalBorrowed,
+    totalBorrowedPaid,
+    totalBorrowedRemaining,
+    netBalance: totalLentReceived - totalBorrowedPaid,
     activeLoans,
     settledLoans,
     totalLoans: loans.length,
