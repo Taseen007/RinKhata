@@ -164,14 +164,20 @@ Wallet ←→ Loan ←→ Transaction
 ### Loan Collection
 ```typescript
 {
-  _id: ObjectId           // Primary key
-  userId: ObjectId        // Reference to User (lender)
-  borrowerName: string    // Name of borrower
-  borrowerContact: string // Contact info (phone/email)
-  totalAmount: number     // Original loan amount
-  remainingAmount: number // Amount still owed
-  status: enum            // "active" | "settled"
-  createdAt: Date         // Loan creation timestamp
+  _id: ObjectId              // Primary key
+  userId: ObjectId           // Reference to User
+  walletId: ObjectId         // Reference to Wallet
+  personName: string         // Name of person (lent to/borrowed from)
+  personContact: string      // Contact info (phone/email)
+  loanType: enum             // "Lent" | "Borrowed"
+  principalAmount: number    // Original loan amount
+  paidAmount: number         // Amount paid so far
+  balanceAmount: number      // Remaining balance
+  purposeNote: string        // Optional purpose description
+  loanDate: Date             // Loan creation date
+  dueDate: Date              // Optional due date
+  status: enum               // "Active" | "Settled"
+  createdAt: Date            // Timestamp
 }
 ```
 
@@ -183,7 +189,8 @@ Wallet ←→ Loan ←→ Transaction
   walletId: ObjectId      // Reference to Wallet
   userId: ObjectId        // Reference to User
   amount: number          // Transaction amount
-  type: enum              // "loan_given" | "payment_received"
+  type: enum              // "Payment" | "Loan"
+  date: Date              // Transaction date
   note: string            // Optional transaction note
   createdAt: Date         // Transaction timestamp
 }
@@ -315,16 +322,28 @@ RinKhata/
 
 ---
 
-### Phase 2: Database Design
-- [ ] Design MongoDB schemas
-- [ ] Implement User model
-- [ ] Implement Wallet model
-- [ ] Implement Loan model
-- [ ] Implement Transaction model
-- [ ] Test database connections
+### Phase 2: Database Design ✅ COMPLETED
+- [x] Design MongoDB schemas
+- [x] Implement User model
+- [x] Implement Wallet model
+- [x] Implement Loan model (updated with full fields)
+- [x] Implement Transaction model (updated with full fields)
+- [x] Test database connections
+- [x] Create seed data script
+- [x] Populate database with demo data
 
-**Status**: ⏳ Not Started  
-**Target**: Day 2
+**Status**: ✅ Completed  
+**Completed on**: Day 2 - March 9, 2026
+
+**Demo Credentials**:
+- Email: `demo@rinkhata.com`
+- Password: `password123`
+
+**Seed Data**:
+- 1 User
+- 3 Wallets (Cash: 50,000 BDT, Bank: 150,000 BDT, bKash: 25,000 BDT)
+- 4 Loans (3 Active, 1 Settled)
+- 6 Transactions
 
 ---
 
