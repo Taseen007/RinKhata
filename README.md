@@ -302,23 +302,9 @@ For detailed API documentation, refer to the `docs/` folder or import the Postma
 
 ---
 
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
----
-
 ## 👨‍💻 Author
 
-Built with ❤️ using the MERN Stack
-
----
-
-## 🙏 Acknowledgments
-
-- Inspired by the need for better personal finance management tools
-- Thanks to the open-source community for amazing libraries and frameworks
-- Special mention to all contributors and testers
+Built using the MERN Stack
 
 ---
 
