@@ -35,11 +35,9 @@ const Login = () => {
       <div className="w-full max-w-md space-y-6">
         {/* Logo */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary text-primary-foreground font-bold text-xl mb-2">
-            R
-          </div>
-          <h1 className="text-2xl font-bold">RinKhata</h1>
-          <p className="text-sm text-muted-foreground">Loan Tracking System</p>
+          <img src="/logo.png" alt="Rinখাতা" className="w-16 h-16 object-contain mx-auto mb-2" />
+          <h1 className="text-2xl font-bold">Rinখাতা</h1>
+          <p className="text-sm text-muted-foreground">ঋণ ব্যবস্থাপনা সিস্টেম</p>
         </div>
 
         {/* Card */}

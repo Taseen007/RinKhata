@@ -40,11 +40,9 @@ const DashboardLayout = () => {
       {/* Sidebar */}
       <aside className="flex flex-col w-[260px] border-r border-sidebar-border bg-sidebar shrink-0">
         {/* Logo */}
-        <div className="flex items-center gap-2 px-5 h-14 border-b border-sidebar-border">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-            R
-          </div>
-          <span className="text-sm font-semibold text-sidebar-accent-foreground">RinKhata</span>
+        <div className="flex items-center gap-3 px-5 h-16 border-b border-sidebar-border">
+          <img src="/logo.png" alt="Rinখাতা" className="w-14 h-14 object-contain" />
+          <span className="text-base font-semibold text-sidebar-accent-foreground">Rinখাতা</span>
         </div>
 
         {/* Navigation */}
@@ -115,7 +113,7 @@ const DashboardLayout = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header */}
-        <header className="flex items-center justify-between h-14 px-6 border-b border-border bg-background shrink-0">
+        <header className="flex items-center justify-between h-16 px-6 border-b border-border bg-background shrink-0">
           <div className="flex items-center gap-2">
             <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm font-medium">{currentPage?.name || 'Dashboard'}</span>
