@@ -1,20 +1,28 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { 
-  HomeIcon, 
-  WalletIcon, 
-  DocumentTextIcon, 
-  CreditCardIcon,
-  ArrowRightOnRectangleIcon
-} from '@heroicons/react/24/outline'
+  LayoutDashboard, 
+  Wallet, 
+  FileText, 
+  ArrowLeftRight,
+  LogOut,
+  Settings,
+  HelpCircle,
+  Search,
+  MoreHorizontal
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useGetMe } from '@/hooks/useAuth'
 
 const DashboardLayout = () => {
   const location = useLocation()
+  const { data: userData } = useGetMe()
+  const user = userData?.data
   
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: HomeIcon },
-    { name: 'Loans', href: '/loans', icon: DocumentTextIcon },
-    { name: 'Wallets', href: '/wallets', icon: WalletIcon },
-    { name: 'Transactions', href: '/transactions', icon: CreditCardIcon },
+    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Loans', href: '/loans', icon: FileText },
+    { name: 'Wallets', href: '/wallets', icon: Wallet },
+    { name: 'Transactions', href: '/transactions', icon: ArrowLeftRight },
   ]
 
   const handleLogout = () => {
@@ -22,53 +30,100 @@ const DashboardLayout = () => {
     window.location.href = '/login'
   }
 
+  // Get page title from current path
+  const currentPage = navigation.find(item => 
+    item.href === '/' ? location.pathname === '/' : location.pathname.startsWith(item.href)
+  )
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex h-screen bg-background">
       {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200">
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center justify-center h-16 border-b border-gray-200">
-            <h1 className="text-2xl font-bold text-primary-600">RinKhata</h1>
+      <aside className="flex flex-col w-[260px] border-r border-sidebar-border bg-sidebar shrink-0">
+        {/* Logo */}
+        <div className="flex items-center gap-2 px-5 h-14 border-b border-sidebar-border">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground font-bold text-sm">
+            R
           </div>
+          <span className="text-sm font-semibold text-sidebar-accent-foreground">RinKhata</span>
+        </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1">
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.href
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-primary-50 text-primary-600'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <item.icon className="w-5 h-5 mr-3" />
-                  {item.name}
-                </Link>
-              )
-            })}
-          </nav>
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          {navigation.map((item) => {
+            const isActive = item.href === '/' 
+              ? location.pathname === '/' 
+              : location.pathname.startsWith(item.href)
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors",
+                  isActive
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                    : 'text-sidebar-foreground hover:bg-sidebar-hover hover:text-foreground'
+                )}
+              >
+                <item.icon className="w-4 h-4" />
+                {item.name}
+              </Link>
+            )
+          })}
+        </nav>
 
-          {/* Logout Button */}
-          <div className="p-4 border-t border-gray-200">
+        {/* Bottom Section */}
+        <div className="px-3 py-3 space-y-1 border-t border-sidebar-border">
+          <button className="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-lg text-sidebar-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors text-left">
+            <Settings className="w-4 h-4" />
+            Settings
+          </button>
+          <button className="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-lg text-sidebar-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors text-left">
+            <HelpCircle className="w-4 h-4" />
+            Get Help
+          </button>
+          <button className="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-lg text-sidebar-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors text-left">
+            <Search className="w-4 h-4" />
+            Search
+          </button>
+        </div>
+
+        {/* User info */}
+        <div className="px-3 py-3 border-t border-sidebar-border">
+          <div className="flex items-center gap-3 px-3 py-2 rounded-lg">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-secondary text-foreground text-sm font-semibold">
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-sidebar-accent-foreground truncate">
+                {user?.name || 'User'}
+              </p>
+              <p className="text-xs text-sidebar-foreground truncate">
+                {user?.email || ''}
+              </p>
+            </div>
             <button
               onClick={handleLogout}
-              className="flex items-center w-full px-4 py-3 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+              className="p-1 rounded hover:bg-sidebar-hover transition-colors"
+              title="Logout"
             >
-              <ArrowRightOnRectangleIcon className="w-5 h-5 mr-3" />
-              Logout
+              <LogOut className="w-4 h-4 text-sidebar-foreground" />
             </button>
           </div>
         </div>
-      </div>
+      </aside>
 
       {/* Main Content */}
-      <div className="pl-64">
-        <main className="p-8">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Top Header */}
+        <header className="flex items-center justify-between h-14 px-6 border-b border-border bg-background shrink-0">
+          <div className="flex items-center gap-2">
+            <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium">{currentPage?.name || 'Dashboard'}</span>
+          </div>
+        </header>
+
+        {/* Content area */}
+        <main className="flex-1 overflow-y-auto p-6">
           <Outlet />
         </main>
       </div>

@@ -1,14 +1,19 @@
-import { useLoanStats, useLoans } from '../hooks/useLoans'
-import { useTransactions } from '../hooks/useTransactions'
-import { useWallets } from '../hooks/useWallets'
+import { useLoanStats, useLoans } from '@/hooks/useLoans'
+import { useTransactions } from '@/hooks/useTransactions'
+import { useWallets } from '@/hooks/useWallets'
+import { formatCurrency, formatDate, cn } from '@/lib/utils'
+import { TrendingUp, TrendingDown, Wallet, HandCoins, Landmark, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { useMemo } from 'react'
 
 const Dashboard = () => {
   const { data: statsData, isLoading: statsLoading, error: statsError } = useLoanStats()
   const { data: loansData, isLoading: loansLoading, error: loansError } = useLoans({ status: 'Active' })
   const { data: transactionsData, isLoading: transactionsLoading, error: transactionsError } = useTransactions()
   const { data: walletsData, isLoading: walletsLoading } = useWallets()
+  const { data: allLoansData } = useLoans({})
 
-  // Display errors if any API call fails
+  // Error state
   if (statsError || loansError || transactionsError) {
     const errorMessage = (statsError as any)?.response?.data?.message || 
                          (loansError as any)?.response?.data?.message || 
@@ -18,19 +23,14 @@ const Dashboard = () => {
                          (transactionsError as any)?.message ||
                          'Failed to load data'
 
-    const errorCode = (statsError as any)?.response?.status || 
-                      (loansError as any)?.response?.status || 
-                      (transactionsError as any)?.response?.status
-
     return (
-      <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
-        <h2 className="text-xl font-semibold text-red-800 mb-2">Error Loading Dashboard</h2>
-        <p className="text-red-700 mb-2">{errorMessage}</p>
-        {errorCode && <p className="text-sm text-red-600 mb-2">Error Code: {errorCode}</p>}
-        <div className="mt-4 text-sm text-red-700">
-          <p className="font-semibold mb-1">Troubleshooting:</p>
+      <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-6">
+        <h2 className="text-lg font-semibold text-destructive mb-2">Error Loading Dashboard</h2>
+        <p className="text-sm text-muted-foreground mb-4">{errorMessage}</p>
+        <div className="text-sm text-muted-foreground space-y-1 mb-4">
+          <p className="font-medium mb-1">Troubleshooting:</p>
           <ul className="list-disc list-inside space-y-1">
-            <li>Make sure backend server is running on <code className="bg-red-100 px-1 rounded">http://localhost:5000</code></li>
+            <li>Make sure backend server is running on <code className="bg-secondary px-1.5 py-0.5 rounded text-xs">http://localhost:5000</code></li>
             <li>Check browser console (F12) for detailed errors</li>
             <li>Try logging out and logging in again</li>
           </ul>
@@ -40,7 +40,7 @@ const Dashboard = () => {
             localStorage.removeItem('token')
             window.location.href = '/login'
           }}
-          className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          className="px-4 py-2 bg-destructive text-destructive-foreground text-sm rounded-lg hover:bg-destructive/90 transition-colors"
         >
           Logout and Try Again
         </button>
@@ -52,306 +52,321 @@ const Dashboard = () => {
   const recentLoans = loansData?.data?.slice(0, 5) || []
   const recentTransactions = transactionsData?.data?.slice(0, 5) || []
   const wallets = walletsData?.data || []
+  const allLoans = allLoansData?.data || []
 
   // Calculate wallet balance breakdown by type
   const walletBreakdown = wallets.reduce((acc, wallet) => {
     const type = wallet.type.toLowerCase()
-    if (!acc[type]) {
-      acc[type] = 0
-    }
+    if (!acc[type]) acc[type] = 0
     acc[type] += wallet.balance
     return acc
   }, {} as Record<string, number>)
 
   const totalWalletBalance = Object.values(walletBreakdown).reduce((sum, val) => sum + val, 0)
 
-  // Get all loans to calculate lent/borrowed breakdown by wallet type
-  const { data: allLoansData } = useLoans({})
-  const allLoans = allLoansData?.data || []
-
-  // Calculate lent breakdown by wallet type
+  // Calculate lent/borrowed breakdowns
   const lentBreakdown = allLoans
     .filter(loan => loan.loanType === 'Lent' && loan.status === 'Active')
     .reduce((acc, loan) => {
       const type = loan.walletId?.type?.toLowerCase() || 'unknown'
-      if (!acc[type]) {
-        acc[type] = 0
-      }
+      if (!acc[type]) acc[type] = 0
       acc[type] += loan.balanceAmount
       return acc
     }, {} as Record<string, number>)
 
-  // Calculate borrowed breakdown by wallet type
   const borrowedBreakdown = allLoans
     .filter(loan => loan.loanType === 'Borrowed' && loan.status === 'Active')
     .reduce((acc, loan) => {
       const type = loan.walletId?.type?.toLowerCase() || 'unknown'
-      if (!acc[type]) {
-        acc[type] = 0
-      }
+      if (!acc[type]) acc[type] = 0
       acc[type] += loan.balanceAmount
       return acc
     }, {} as Record<string, number>)
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-BD', {
-      style: 'currency',
-      currency: 'BDT',
-      minimumFractionDigits: 0,
-    }).format(amount)
-  }
+  // Build chart data from transactions
+  const chartData = useMemo(() => {
+    const txs = transactionsData?.data || []
+    if (txs.length === 0) return []
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    const grouped: Record<string, { lent: number; borrowed: number }> = {}
+    txs.forEach(tx => {
+      const date = new Date(tx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      if (!grouped[date]) grouped[date] = { lent: 0, borrowed: 0 }
+      if (tx.loanId?.loanType === 'Lent') {
+        grouped[date].lent += tx.amount
+      } else {
+        grouped[date].borrowed += tx.amount
+      }
     })
-  }
+
+    return Object.entries(grouped)
+      .map(([date, vals]) => ({ date, ...vals }))
+      .slice(-15)
+  }, [transactionsData])
+
+  const netBalance = stats?.netBalance || 0
+
+  // Stat cards config
+  const statCards = [
+    {
+      title: 'Available Balance',
+      value: formatCurrency(totalWalletBalance),
+      subtitle: 'Total money in your wallets',
+      description: `${wallets.length} wallet${wallets.length !== 1 ? 's' : ''} active`,
+      icon: Wallet,
+      trend: totalWalletBalance >= 0 ? 'up' as const : 'down' as const,
+      loading: walletsLoading,
+      breakdown: walletBreakdown,
+    },
+    {
+      title: 'Total Lent',
+      value: formatCurrency(stats?.totalLentRemaining || 0),
+      subtitle: 'Money you lent to others',
+      description: `${stats?.activeLoans || 0} active loans`,
+      icon: ArrowUpRight,
+      trend: 'up' as const,
+      loading: statsLoading,
+      breakdown: lentBreakdown,
+    },
+    {
+      title: 'Total Borrowed',
+      value: formatCurrency(stats?.totalBorrowedRemaining || 0),
+      subtitle: 'Money you borrowed from others',
+      description: `${stats?.settledLoans || 0} settled loans`,
+      icon: ArrowDownRight,
+      trend: 'down' as const,
+      loading: statsLoading,
+      breakdown: borrowedBreakdown,
+    },
+    {
+      title: 'Net Balance',
+      value: formatCurrency(netBalance),
+      subtitle: netBalance >= 0 ? 'You are owed this amount' : 'You owe this amount',
+      description: `${stats?.totalLoans || 0} total loans`,
+      icon: Landmark,
+      trend: netBalance >= 0 ? 'up' as const : 'down' as const,
+      loading: statsLoading,
+      breakdown: {},
+    },
+  ]
+
+  const BreakdownRow = ({ label, amount }: { label: string; amount: number }) => (
+    <div className="flex justify-between text-xs">
+      <span className="text-muted-foreground capitalize">{label}:</span>
+      <span className="font-medium text-foreground">{formatCurrency(amount)}</span>
+    </div>
+  )
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Dashboard</h1>
-      
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Available Balance</h3>
-          {walletsLoading ? (
-            <div className="h-9 bg-gray-200 animate-pulse rounded"></div>
-          ) : (
-            <>
-              <p className={`text-3xl font-bold ${
-                totalWalletBalance >= 0 ? 'text-primary-600' : 'text-red-600'
-              }`}>
-                {formatCurrency(totalWalletBalance)}
-              </p>
-              {Object.keys(walletBreakdown).length > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-200 space-y-1">
-                  {walletBreakdown.cash !== undefined && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Cash:</span>
-                      <span className="font-semibold text-gray-900">{formatCurrency(walletBreakdown.cash)}</span>
-                    </div>
-                  )}
-                  {walletBreakdown.bank !== undefined && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Bank:</span>
-                      <span className="font-semibold text-gray-900">{formatCurrency(walletBreakdown.bank)}</span>
-                    </div>
-                  )}
-                  {walletBreakdown.mfs !== undefined && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">MFS:</span>
-                      <span className="font-semibold text-gray-900">{formatCurrency(walletBreakdown.mfs)}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-          <p className="text-xs text-gray-500 mt-2">
-            Total money in your wallets
-          </p>
-        </div>
-        
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Total Lent</h3>
-          {statsLoading ? (
-            <div className="h-9 bg-gray-200 animate-pulse rounded"></div>
-          ) : (
-            <>
-              <p className="text-3xl font-bold text-green-600">
-                {formatCurrency(stats?.totalLentRemaining || 0)}
-              </p>
-              {Object.keys(lentBreakdown).length > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-200 space-y-1">
-                  {lentBreakdown.cash !== undefined && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Cash:</span>
-                      <span className="font-semibold text-gray-900">{formatCurrency(lentBreakdown.cash)}</span>
-                    </div>
-                  )}
-                  {lentBreakdown.bank !== undefined && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Bank:</span>
-                      <span className="font-semibold text-gray-900">{formatCurrency(lentBreakdown.bank)}</span>
-                    </div>
-                  )}
-                  {lentBreakdown.mfs !== undefined && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">MFS:</span>
-                      <span className="font-semibold text-gray-900">{formatCurrency(lentBreakdown.mfs)}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-          <p className="text-xs text-gray-500 mt-2">
-            Money you lent to others (remaining)
-          </p>
-        </div>
-        
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Total Borrowed</h3>
-          {statsLoading ? (
-            <div className="h-9 bg-gray-200 animate-pulse rounded"></div>
-          ) : (
-            <>
-              <p className="text-3xl font-bold text-red-600">
-                {formatCurrency(stats?.totalBorrowedRemaining || 0)}
-              </p>
-              {Object.keys(borrowedBreakdown).length > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-200 space-y-1">
-                  {borrowedBreakdown.cash !== undefined && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Cash:</span>
-                      <span className="font-semibold text-gray-900">{formatCurrency(borrowedBreakdown.cash)}</span>
-                    </div>
-                  )}
-                  {borrowedBreakdown.bank !== undefined && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Bank:</span>
-                      <span className="font-semibold text-gray-900">{formatCurrency(borrowedBreakdown.bank)}</span>
-                    </div>
-                  )}
-                  {borrowedBreakdown.mfs !== undefined && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">MFS:</span>
-                      <span className="font-semibold text-gray-900">{formatCurrency(borrowedBreakdown.mfs)}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-          <p className="text-xs text-gray-500 mt-2">
-            Money you borrowed from others (remaining)
-          </p>
-        </div>
-      </div>
-
-      {/* Net Balance Summary */}
-      {!statsLoading && (
-        <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 p-6 rounded-lg shadow text-white mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-medium mb-2 opacity-90">Net Balance (Lent - Borrowed)</h3>
-              <p className="text-4xl font-bold">
-                {formatCurrency(stats?.netBalance || 0)}
-              </p>
-              <p className="text-sm mt-2 opacity-90">
-                {(stats?.netBalance || 0) >= 0
-                  ? 'You are owed this amount overall'
-                  : 'You owe this amount overall'}
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="bg-white bg-opacity-20 rounded-lg p-4">
-                <p className="text-xs opacity-90 mb-1">Available Balance</p>
-                <p className="text-2xl font-bold">{formatCurrency(totalWalletBalance)}</p>
+    <div className="space-y-6">
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((card) => (
+          <div key={card.title} className="rounded-xl border border-primary/20 bg-card p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-muted-foreground">{card.title}</p>
+              <div className={cn(
+                "flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded",
+                card.trend === 'up' ? 'text-emerald-400' : 'text-red-400'
+              )}>
+                {card.trend === 'up' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
               </div>
             </div>
+            {card.loading ? (
+              <div className="h-8 bg-secondary animate-pulse rounded mb-2" />
+            ) : (
+              <p className="text-2xl font-bold tracking-tight">{card.value}</p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">{card.subtitle}</p>
+            <p className="text-xs text-muted-foreground">{card.description}</p>
+            {Object.keys(card.breakdown).length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border space-y-1">
+                {Object.entries(card.breakdown).map(([key, val]) => (
+                  <BreakdownRow key={key} label={key} amount={val} />
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Transaction Activity Chart */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base font-semibold">Transaction Activity</h3>
+            <p className="text-sm text-muted-foreground">Lent vs Borrowed over time</p>
           </div>
         </div>
-      )}
+        {transactionsLoading ? (
+          <div className="h-[250px] bg-secondary/50 animate-pulse rounded-lg" />
+        ) : chartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={250}>
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="lentGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#2563EB" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="borrowedGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis 
+                dataKey="date" 
+                axisLine={false} 
+                tickLine={false}
+                tick={{ fill: '#94A3B8', fontSize: 12 }}
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false}
+                tick={{ fill: '#94A3B8', fontSize: 12 }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#1E293B',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  color: '#F8FAFC',
+                  fontSize: '12px',
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="lent"
+                stroke="#2563EB"
+                fillOpacity={1}
+                fill="url(#lentGrad)"
+                strokeWidth={2}
+              />
+              <Area
+                type="monotone"
+                dataKey="borrowed"
+                stroke="#EF4444"
+                fillOpacity={1}
+                fill="url(#borrowedGrad)"
+                strokeWidth={2}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">
+            No transaction data to display
+          </div>
+        )}
+      </div>
 
-      {/* Active Loans Stats */}
+      {/* Active Loans Quick Stats */}
       {!statsLoading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <a href="/loans?status=Active" className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg shadow text-white hover:from-blue-600 hover:to-blue-700 transition-all cursor-pointer">
-            <h3 className="text-sm font-medium mb-2 opacity-90">Active Loans</h3>
-            <p className="text-4xl font-bold">{stats?.activeLoans || 0}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <a href="/loans?status=Active" className="rounded-xl border border-border bg-card p-5 hover:bg-accent/50 transition-colors group">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Active Loans</p>
+                <p className="text-3xl font-bold mt-1">{stats?.activeLoans || 0}</p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <HandCoins className="w-5 h-5 text-primary" />
+              </div>
+            </div>
           </a>
-          <a href="/loans?status=Settled" className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-lg shadow text-white hover:from-purple-600 hover:to-purple-700 transition-all cursor-pointer">
-            <h3 className="text-sm font-medium mb-2 opacity-90">Settled Loans</h3>
-            <p className="text-4xl font-bold">{stats?.settledLoans || 0}</p>
+          <a href="/loans?status=Settled" className="rounded-xl border border-border bg-card p-5 hover:bg-accent/50 transition-colors group">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Settled Loans</p>
+                <p className="text-3xl font-bold mt-1">{stats?.settledLoans || 0}</p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                <Landmark className="w-5 h-5 text-success" />
+              </div>
+            </div>
           </a>
         </div>
       )}
 
-      {/* Recent Loans */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Active Loans</h2>
+      {/* Recent Loans Table */}
+      <div className="rounded-xl border border-border bg-card">
+        <div className="p-5 border-b border-border">
+          <h3 className="text-base font-semibold">Recent Active Loans</h3>
+        </div>
         {loansLoading ? (
-          <div className="space-y-3">
+          <div className="p-5 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-gray-200 animate-pulse rounded"></div>
+              <div key={i} className="h-12 bg-secondary animate-pulse rounded" />
             ))}
           </div>
         ) : recentLoans.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="border-b">
-                <tr className="text-left text-sm text-gray-600">
-                  <th className="pb-3 font-medium">Person</th>
-                  <th className="pb-3 font-medium">Type</th>
-                  <th className="pb-3 font-medium">Amount</th>
-                  <th className="pb-3 font-medium">Balance</th>
-                  <th className="pb-3 font-medium">Date</th>
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Person</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Type</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Amount</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Balance</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Date</th>
                 </tr>
               </thead>
               <tbody>
                 {recentLoans.map((loan) => (
-                  <tr key={loan._id} className="border-b last:border-0">
-                    <td className="py-3 font-medium">{loan.personName}</td>
-                    <td className="py-3">
-                      <span
-                        className={`inline-block px-2 py-1 text-xs rounded-full ${
-                          loan.loanType === 'Lent'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
+                  <tr key={loan._id} className="border-b border-border last:border-0 hover:bg-accent/50 transition-colors">
+                    <td className="px-5 py-3 text-sm font-medium">{loan.personName}</td>
+                    <td className="px-5 py-3">
+                      <span className={cn(
+                        "inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full",
+                        loan.loanType === 'Lent'
+                          ? 'bg-emerald-500/10 text-emerald-400'
+                          : 'bg-red-500/10 text-red-400'
+                      )}>
                         {loan.loanType}
                       </span>
                     </td>
-                    <td className="py-3">{formatCurrency(loan.principalAmount)}</td>
-                    <td className="py-3 font-semibold">{formatCurrency(loan.balanceAmount)}</td>
-                    <td className="py-3 text-gray-600 text-sm">{formatDate(loan.createdAt)}</td>
+                    <td className="px-5 py-3 text-sm">{formatCurrency(loan.principalAmount)}</td>
+                    <td className="px-5 py-3 text-sm font-semibold">{formatCurrency(loan.balanceAmount)}</td>
+                    <td className="px-5 py-3 text-sm text-muted-foreground">{formatDate(loan.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <p className="text-gray-500 text-center py-8">No active loans</p>
+          <div className="p-10 text-center text-muted-foreground text-sm">No active loans</div>
         )}
       </div>
 
       {/* Recent Transactions */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Transactions</h2>
+      <div className="rounded-xl border border-border bg-card">
+        <div className="p-5 border-b border-border">
+          <h3 className="text-base font-semibold">Recent Transactions</h3>
+        </div>
         {transactionsLoading ? (
-          <div className="space-y-3">
+          <div className="p-5 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-gray-200 animate-pulse rounded"></div>
+              <div key={i} className="h-12 bg-secondary animate-pulse rounded" />
             ))}
           </div>
         ) : recentTransactions.length > 0 ? (
-          <div className="space-y-3">
+          <div className="divide-y divide-border">
             {recentTransactions.map((transaction) => {
-              // Determine display name from loanId or note
               const displayName = transaction.loanId?.personName || 
                                  transaction.note?.split('-')[1]?.trim() ||
                                  transaction.note || 
                                  'Unknown'
               
               return (
-                <div
-                  key={transaction._id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
+                <div key={transaction._id} className="flex items-center justify-between px-5 py-3 hover:bg-accent/50 transition-colors">
                   <div>
-                    <p className="font-medium">{displayName}</p>
-                    <p className="text-sm text-gray-600">
-                      {transaction.type} • {formatDate(transaction.createdAt)}
+                    <p className="text-sm font-medium">{displayName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {transaction.type} &bull; {formatDate(transaction.createdAt)}
                     </p>
                   </div>
-                  <p className={`font-bold ${
-                    transaction.type === 'Loan' ? 'text-blue-600' : 'text-green-600'
-                  }`}>
+                  <p className={cn(
+                    "text-sm font-semibold",
+                    transaction.type === 'Loan' ? 'text-warning' : 'text-success'
+                  )}>
                     {formatCurrency(transaction.amount)}
                   </p>
                 </div>
@@ -359,7 +374,7 @@ const Dashboard = () => {
             })}
           </div>
         ) : (
-          <p className="text-gray-500 text-center py-8">No transactions yet</p>
+          <div className="p-10 text-center text-muted-foreground text-sm">No transactions yet</div>
         )}
       </div>
     </div>

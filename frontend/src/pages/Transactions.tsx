@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { useTransactions } from '../hooks/useTransactions'
+import { useTransactions } from '@/hooks/useTransactions'
+import { formatCurrency, formatDateTime, cn } from '@/lib/utils'
+import { ArrowLeftRight, HandCoins, Receipt, X } from 'lucide-react'
 
 const Transactions = () => {
   const [typeFilter, setTypeFilter] = useState<'Loan' | 'Payment' | ''>('')
@@ -9,7 +11,6 @@ const Transactions = () => {
 
   const transactions = data?.data || []
 
-  // Filter transactions
   const filteredTransactions = transactions.filter((transaction) => {
     const typeMatch = !typeFilter || transaction.type === typeFilter
     const dateMatch =
@@ -18,34 +19,16 @@ const Transactions = () => {
     return typeMatch && dateMatch
   })
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-BD', {
-      style: 'currency',
-      currency: 'BDT',
-      minimumFractionDigits: 0,
-    }).format(amount)
-  }
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Transactions</h1>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Transactions</h1>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-wrap gap-4">
+      <div className="rounded-xl border border-border bg-card p-4 flex flex-wrap gap-3 items-center">
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as any)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="px-3 py-2 bg-secondary border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         >
           <option value="">All Types</option>
           <option value="Loan">Loan Created</option>
@@ -55,111 +38,110 @@ const Transactions = () => {
           type="date"
           value={dateFilter}
           onChange={(e) => setDateFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="px-3 py-2 bg-secondary border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         />
         {(typeFilter || dateFilter) && (
           <button
-            onClick={() => {
-              setTypeFilter('')
-              setDateFilter('')
-            }}
-            className="px-4 py-2 text-sm text-red-600 border border-red-600 rounded-lg hover:bg-red-50 transition-colors"
+            onClick={() => { setTypeFilter(''); setDateFilter('') }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium border border-destructive/30 text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
           >
+            <X className="w-3.5 h-3.5" />
             Clear Filters
           </button>
         )}
       </div>
 
-      {/* Transaction Summary */}
+      {/* Summary Cards */}
       {!isLoading && filteredTransactions.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow">
-            <p className="text-sm opacity-90 mb-2">Total Transactions</p>
-            <p className="text-3xl font-bold">{filteredTransactions.length}</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Transactions</p>
+                <p className="text-2xl font-bold mt-1">{filteredTransactions.length}</p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <ArrowLeftRight className="w-5 h-5 text-primary" />
+              </div>
+            </div>
           </div>
-          <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-lg shadow">
-            <p className="text-sm opacity-90 mb-2">Loans Created</p>
-            <p className="text-3xl font-bold">
-              {filteredTransactions.filter((t) => t.type === 'Loan').length}
-            </p>
+          <div className="rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Loans Created</p>
+                <p className="text-2xl font-bold mt-1">
+                  {filteredTransactions.filter((t) => t.type === 'Loan').length}
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                <Receipt className="w-5 h-5 text-warning" />
+              </div>
+            </div>
           </div>
-          <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow">
-            <p className="text-sm opacity-90 mb-2">Payments Made</p>
-            <p className="text-3xl font-bold">
-              {filteredTransactions.filter((t) => t.type === 'Payment').length}
-            </p>
+          <div className="rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Payments Made</p>
+                <p className="text-2xl font-bold mt-1">
+                  {filteredTransactions.filter((t) => t.type === 'Payment').length}
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                <HandCoins className="w-5 h-5 text-success" />
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Transactions List */}
+      {/* Transactions Table */}
       {isLoading ? (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="rounded-xl border border-border bg-card p-5">
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-16 bg-gray-200 animate-pulse rounded"></div>
+              <div key={i} className="h-12 bg-secondary animate-pulse rounded" />
             ))}
           </div>
         </div>
       ) : filteredTransactions.length > 0 ? (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date & Time
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Person
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Note
-                  </th>
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Date & Time</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Person</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Type</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Amount</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Note</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody>
                 {filteredTransactions.map((transaction) => (
-                  <tr key={transaction._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDateTime(transaction.createdAt)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {transaction.loanId?.personName || 'Unknown'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          transaction.type === 'Loan'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-green-100 text-green-800'
-                        }`}
-                      >
+                  <tr key={transaction._id} className="border-b border-border last:border-0 hover:bg-accent/50 transition-colors">
+                    <td className="px-5 py-3 text-sm">{formatDateTime(transaction.createdAt)}</td>
+                    <td className="px-5 py-3 text-sm font-medium">{transaction.loanId?.personName || 'Unknown'}</td>
+                    <td className="px-5 py-3">
+                      <span className={cn(
+                        "inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full",
+                        transaction.type === 'Loan' ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'
+                      )}>
                         {transaction.type}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                    <td className="px-5 py-3 text-sm font-semibold">
                       {(() => {
                         const isIncoming = 
                           (transaction.type === 'Payment' && transaction.loanId?.loanType === 'Lent') ||
                           (transaction.type === 'Loan' && transaction.loanId?.loanType === 'Borrowed')
-                        
                         return (
-                          <span className={isIncoming ? 'text-green-600' : 'text-red-600'}>
-                            {isIncoming ? '+' : '-'}{formatCurrency(transaction.amount).replace('BDT', 'BDT ')}
+                          <span className={isIncoming ? 'text-emerald-400' : 'text-red-400'}>
+                            {isIncoming ? '+' : '-'}{formatCurrency(transaction.amount)}
                           </span>
                         )
                       })()}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {transaction.note || '-'}
-                    </td>
+                    <td className="px-5 py-3 text-sm text-muted-foreground">{transaction.note || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -167,25 +149,11 @@ const Transactions = () => {
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <svg
-            className="mx-auto h-12 w-12 text-gray-400 mb-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-            />
-          </svg>
-          <p className="text-gray-500 mb-2">No transactions found</p>
-          <p className="text-sm text-gray-400">
-            {typeFilter || dateFilter
-              ? 'Try adjusting your filters'
-              : 'Create loans to see transactions here'}
+        <div className="rounded-xl border border-border bg-card p-12 text-center">
+          <ArrowLeftRight className="mx-auto w-10 h-10 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground mb-1">No transactions found</p>
+          <p className="text-xs text-muted-foreground">
+            {typeFilter || dateFilter ? 'Try adjusting your filters' : 'Create loans to see transactions here'}
           </p>
         </div>
       )}
