@@ -13,14 +13,19 @@ import {
 // @access  Private
 export const getLoans = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { status } = req.query;
+    const { status, loanType } = req.query;
 
     const filter: any = { userId: req.user._id };
     if (status) {
       filter.status = status;
     }
+    if (loanType) {
+      filter.loanType = loanType;
+    }
 
-    const loans = await Loan.find(filter).sort({ createdAt: -1 });
+    const loans = await Loan.find(filter)
+      .populate('walletId', 'name type balance')
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -64,7 +69,7 @@ export const getLoan = async (req: AuthRequest, res: Response): Promise<void> =>
     const loan = await Loan.findOne({
       _id: req.params.id,
       userId: req.user._id,
-    });
+    }).populate('walletId', 'name type balance');
 
     if (!loan) {
       res.status(404).json({
@@ -220,6 +225,15 @@ export const deleteLoan = async (req: AuthRequest, res: Response): Promise<void>
       res.status(404).json({
         success: false,
         message: 'Loan not found',
+      });
+      return;
+    }
+
+    // Prevent deletion of active loans
+    if (loan.status === 'Active') {
+      res.status(400).json({
+        success: false,
+        message: 'Cannot delete an active loan. Please settle the loan first or mark it as cancelled.',
       });
       return;
     }

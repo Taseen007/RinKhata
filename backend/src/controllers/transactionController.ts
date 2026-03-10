@@ -16,7 +16,7 @@ export const getTransactions = async (req: AuthRequest, res: Response): Promise<
     if (walletId) filter.walletId = walletId;
 
     const transactions = await Transaction.find(filter)
-      .populate('loanId', 'borrowerName totalAmount')
+      .populate('loanId', 'personName loanType principalAmount balanceAmount')
       .populate('walletId', 'name type')
       .sort({ createdAt: -1 });
 
@@ -43,7 +43,7 @@ export const getTransaction = async (req: AuthRequest, res: Response): Promise<v
       _id: req.params.id,
       userId: req.user._id,
     })
-      .populate('loanId', 'borrowerName totalAmount remainingAmount status')
+      .populate('loanId', 'personName loanType principalAmount balanceAmount status')
       .populate('walletId', 'name type balance');
 
     if (!transaction) {

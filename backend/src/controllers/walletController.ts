@@ -170,6 +170,21 @@ export const deleteWallet = async (req: AuthRequest, res: Response): Promise<voi
       return;
     }
 
+    // Check if wallet has active loans
+    const Loan = require('../models/Loan').default;
+    const activeLoans = await Loan.countDocuments({
+      walletId: wallet._id,
+      status: 'Active',
+    });
+
+    if (activeLoans > 0) {
+      res.status(400).json({
+        success: false,
+        message: `Cannot delete wallet. It has ${activeLoans} active loan(s). Please settle or move the loans first.`,
+      });
+      return;
+    }
+
     await wallet.deleteOne();
 
     res.status(200).json({

@@ -144,7 +144,9 @@ export const processLoanPayment = async (
           amount: paymentAmount,
           type: 'Payment',
           date: new Date(),
-          note: note || `Payment for ${loan.loanType.toLowerCase()} - ${loan.personName}`,
+          note: note || (loan.loanType === 'Lent' 
+            ? `Received from ${loan.personName}` 
+            : `Payment to ${loan.personName}`),
         },
       ],
       { session }
@@ -185,7 +187,7 @@ export const getLoanStatistics = async (userId: string) => {
     totalBorrowed,
     totalBorrowedPaid,
     totalBorrowedRemaining,
-    netBalance: totalLentReceived - totalBorrowedPaid,
+    netBalance: totalLentRemaining - totalBorrowedRemaining,
     activeLoans,
     settledLoans,
     totalLoans: loans.length,
