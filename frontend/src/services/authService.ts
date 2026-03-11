@@ -27,6 +27,9 @@ export interface User {
   name: string
   email: string
   createdAt: string
+  avatar?: string // Optional avatar property for user profile image
+  age?: number | string
+  occupation?: string
 }
 
 export const authService = {
@@ -54,6 +57,12 @@ export const authService = {
   getMe: async (): Promise<{ success: boolean; data: User }> => {
     const { data } = await api.get('/auth/me')
     return data
+  },
+
+  // Update current user profile
+  updateMe: async (payload: { name: string; age?: number | string; occupation?: string; avatar?: string }) => {
+    const { data } = await api.put('/auth/me', payload);
+    return data;
   },
 
   // Logout user
