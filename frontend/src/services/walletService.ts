@@ -20,6 +20,7 @@ export interface CreateWalletData {
 export interface UpdateWalletData {
   name?: string
   type?: 'cash' | 'bank' | 'mfs'
+  balance?: number
 }
 
 export const walletService = {
@@ -36,7 +37,7 @@ export const walletService = {
   },
 
   // Create wallet
-  createWallet: async (walletData: CreateWalletData): Promise<{ success: boolean; data: Wallet }> => {
+  createWallet: async (walletData: CreateWalletData): Promise<any> => {
     // Map initialBalance to balance for backend
     const payload = {
       name: walletData.name,
