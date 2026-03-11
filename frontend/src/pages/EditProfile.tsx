@@ -20,28 +20,27 @@ const EditProfile: React.FC = () => {
   const [error, setError] = useState('');
 
   // Mutation for updating profile
-  const updateProfile = useMutation({
-    mutationFn: async (payload: any) => {
+    const updateProfile = useMutation({
+      mutationFn: async (formData: { name: string; age?: string | number; occupation?: string; avatar?: string }) => {
       setSaving(true);
       setError('');
       // If avatar file is uploaded, handle upload (mock: just use local URL)
-      let avatarUrl = form.avatar;
-      if (avatarFile) {
-        // In real app, upload to server/cloud and get URL
-        avatarUrl = URL.createObjectURL(avatarFile);
-      }
-      const res = await authService.updateMe({
-        name: form.name,
-        age: form.age,
-        occupation: form.occupation,
-        avatar: avatarUrl,
-      });
+        let avatarUrl = formData.avatar;
+        if (avatarFile) {
+          avatarUrl = URL.createObjectURL(avatarFile);
+        }
+        const res = await authService.updateMe({
+          name: formData.name,
+          age: formData.age,
+          occupation: formData.occupation,
+          avatar: avatarUrl,
+        });
       setSaving(false);
       return res;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['user']);
-      navigate('/profile');
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['user'] });
+        navigate('/profile');
     },
     onError: (err: any) => {
       setSaving(false);
