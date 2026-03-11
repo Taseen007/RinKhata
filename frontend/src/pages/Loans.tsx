@@ -26,6 +26,8 @@ const Loans = () => {
     purposeNote: '',
     dueDate: '',
   })
+  // Wallet type for selector (not in formData)
+  const [walletType, setWalletType] = useState<'cash' | 'bank' | 'mfs'>('cash');
 
   const [paymentAmount, setPaymentAmount] = useState(0)
 
@@ -329,48 +331,85 @@ const Loans = () => {
 
               {!editingLoan && (
                 <>
+                  {/* Wallet Type Selector */}
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1.5">Wallet Type *</label>
+                    <div className="flex gap-2 mb-2">
+                      {['cash', 'bank', 'mfs'].map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          className={`px-4 py-2 rounded-lg border ${walletType === type ? 'bg-blue-600 text-white border-blue-600' : 'bg-[#232a36] text-blue-300 border-slate-700'} hover:border-blue-500 transition font-semibold`}
+                          onClick={() => {
+                            setWalletType(type as 'cash' | 'bank' | 'mfs');
+                            setFormData({ ...formData, walletId: '' });
+                          }}
+                        >
+                          {type === 'cash' ? 'Cash' : type === 'bank' ? 'Bank' : 'MFS'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Wallet Dropdown for selected type */}
                   <div>
                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Wallet *</label>
                     <select
                       value={formData.walletId}
                       onChange={(e) => setFormData({ ...formData, walletId: e.target.value })}
-                      className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="w-full px-3 py-2 bg-[#1a202c] border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
                       required
                     >
-                      <option value="">Select a wallet</option>
-                      {wallets.map((wallet) => (
+                      <option value="">Select a {walletType ? walletType.charAt(0).toUpperCase() + walletType.slice(1) : ''} wallet</option>
+                      {wallets.filter((w) => w.type === walletType).map((wallet) => (
                         <option key={wallet._id} value={wallet._id}>
                           {wallet.name} ({wallet.type})
                         </option>
                       ))}
                     </select>
                   </div>
-
+                  {/* Wallet Balance Display */}
+                  {formData.walletId && (
+                    <div className="mb-2 text-blue-300 text-sm font-semibold">
+                      {(() => {
+                        const selected = wallets.find(w => w._id === formData.walletId);
+                        return selected ? `Wallet: ${selected.name} | Balance: BDT ${selected.balance.toLocaleString()}` : '';
+                      })()}
+                    </div>
+                  )}
+                  {/* Loan Type Selector */}
                   <div>
                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Loan Type *</label>
                     <select
                       value={formData.loanType}
                       onChange={(e) => setFormData({ ...formData, loanType: e.target.value as any })}
-                      className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="w-full px-3 py-2 bg-[#1a202c] border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
                       required
                     >
                       <option value="Lent">Lent (I gave money)</option>
                       <option value="Borrowed">Borrowed (I took money)</option>
                     </select>
                   </div>
-
+                  {/* Amount Input with Balance Check */}
                   <div>
                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Amount *</label>
                     <input
                       type="number"
                       value={formData.principalAmount || ''}
                       onChange={(e) => setFormData({ ...formData, principalAmount: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="w-full px-3 py-2 bg-[#1a202c] border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
                       placeholder="Enter amount"
                       min="0"
                       step="0.01"
                       required
                     />
+                    {/* Prevent negative balance for Lent (giving money) */}
+                    {formData.loanType === 'Lent' && formData.walletId && (() => {
+                      const selected = wallets.find(w => w._id === formData.walletId);
+                      if (selected && formData.principalAmount > selected.balance) {
+                        return <div className="text-red-400 text-xs mt-1">Insufficient balance in {selected.name} wallet</div>;
+                      }
+                      return null;
+                    })()}
                   </div>
                 </>
               )}
@@ -421,46 +460,99 @@ const Loans = () => {
       {/* Payment Modal */}
       {showPayModal && payingLoan && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="rounded-xl border border-border bg-card shadow-xl w-full max-w-md p-6">
+          <div className="rounded-xl border border-border bg-[#232a36] shadow-xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold">
+              <h2 className="text-lg font-semibold text-white">
                 {payingLoan.loanType === 'Lent' ? 'Receive Payment' : 'Make Payment'}
               </h2>
               <button onClick={() => { setShowPayModal(false); setPayingLoan(null); setPaymentAmount(0) }} className="p-1 rounded-lg hover:bg-accent transition-colors">
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
-            
-            <div className="bg-secondary rounded-lg p-4 mb-4">
-              <p className="text-xs text-muted-foreground mb-1">Loan Details</p>
-              <p className="font-semibold">{payingLoan.personName}</p>
-              <p className="text-sm text-muted-foreground">Balance: {formatCurrency(payingLoan.balanceAmount)}</p>
+            <div className="bg-[#1a202c] rounded-lg p-4 mb-4">
+              <p className="text-xs text-blue-200 mb-1">Loan Details</p>
+              <p className="font-semibold text-white">{payingLoan.personName}</p>
+              <p className="text-sm text-blue-200">Balance: {formatCurrency(payingLoan.balanceAmount)}</p>
             </div>
-
             <form onSubmit={handlePayment} className="space-y-4">
+              {/* Wallet Type Selector */}
               <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1.5">Payment Amount *</label>
+                <label className="block text-sm font-medium text-blue-200 mb-1.5">Wallet Type *</label>
+                <div className="flex gap-2 mb-2">
+                  {['cash', 'bank', 'mfs'].map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      className={`px-4 py-2 rounded-lg border ${walletType === type ? 'bg-blue-600 text-white border-blue-600' : 'bg-[#232a36] text-blue-300 border-slate-700'} hover:border-blue-500 transition font-semibold`}
+                      onClick={() => {
+                        setWalletType(type as 'cash' | 'bank' | 'mfs');
+                        setFormData({ ...formData, walletId: '' });
+                      }}
+                    >
+                      {type === 'cash' ? 'Cash' : type === 'bank' ? 'Bank' : 'MFS'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Wallet Dropdown for selected type */}
+              <div>
+                <label className="block text-sm font-medium text-blue-200 mb-1.5">Wallet *</label>
+                <select
+                  value={formData.walletId}
+                  onChange={(e) => setFormData({ ...formData, walletId: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#1a202c] border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  required
+                >
+                  <option value="">Select a {walletType ? walletType.charAt(0).toUpperCase() + walletType.slice(1) : ''} wallet</option>
+                  {wallets.filter((w) => w.type === walletType).map((wallet) => (
+                    <option key={wallet._id} value={wallet._id}>
+                      {wallet.name} ({wallet.type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {/* Wallet Balance Display */}
+              {formData.walletId && (
+                <div className="mb-2 text-blue-300 text-sm font-semibold">
+                  {(() => {
+                    const selected = wallets.find(w => w._id === formData.walletId);
+                    return selected ? `Wallet: ${selected.name} | Balance: BDT ${selected.balance.toLocaleString()}` : '';
+                  })()}
+                </div>
+              )}
+              {/* Payment Amount Input with Balance Check */}
+              <div>
+                <label className="block text-sm font-medium text-blue-200 mb-1.5">Payment Amount *</label>
                 <input
                   type="number"
                   value={paymentAmount || ''}
                   onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="w-full px-3 py-2 bg-[#1a202c] border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
                   placeholder="Enter payment amount"
                   min="0.01"
                   max={payingLoan.balanceAmount}
                   step="0.01"
                   required
                 />
-                <p className="text-xs text-muted-foreground mt-1.5">
+                <p className="text-xs text-blue-200 mt-1.5">
                   Maximum: {formatCurrency(payingLoan.balanceAmount)}
                 </p>
+                {/* Prevent overpayment if paying (Borrowed) and insufficient wallet balance if receiving (Lent) */}
+                {formData.walletId && (() => {
+                  const selected = wallets.find(w => w._id === formData.walletId);
+                  if (selected) {
+                    if (payingLoan.loanType === 'Borrowed' && paymentAmount > selected.balance) {
+                      return <div className="text-red-400 text-xs mt-1">Insufficient balance in {selected.name} wallet</div>;
+                    }
+                  }
+                  return null;
+                })()}
               </div>
-
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => { setShowPayModal(false); setPayingLoan(null); setPaymentAmount(0) }}
-                  className="flex-1 px-4 py-2 border border-border text-foreground text-sm rounded-lg hover:bg-accent transition-colors"
+                  className="flex-1 px-4 py-2 border border-slate-700 text-white text-sm rounded-lg hover:bg-[#1a202c] transition-colors"
                 >
                   Cancel
                 </button>
