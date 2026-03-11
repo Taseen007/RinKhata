@@ -382,6 +382,12 @@ For detailed API documentation, refer to the `docs/` folder or import the Postma
 ### What's Working
 ✅ User authentication (Login/Register with JWT)
 ✅ Multi-wallet system (Cash, Bank, MFS)
+✅ Prevent duplicate cash wallets; balance is combined and cannot create multiple cash wallets
+✅ Wallet type can be updated from frontend/backend
+✅ Toast notification for cash wallet balance update
+✅ Sidebar avatar dropdown for profile/logout
+✅ Edit Profile page with avatar upload and real-time update
+✅ Settings page added for account/theme management
 ✅ Dual-mode loan tracking (Lent and Borrowed)
 ✅ Partial payment processing with automatic balance updates
 ✅ Transaction history with filtering
@@ -400,5 +406,5 @@ For detailed API documentation, refer to the `docs/` folder or import the Postma
 
 ---
 
-**Last Updated**: March 10, 2026  
-**Current Phase**: Day 4 Complete - Enhanced Features & AI Integration Next
+**Last Updated**: March 11, 2026  
+**Current Phase**: Day 5 - Enhanced Features & Notifications
