@@ -1,3 +1,40 @@
+// @desc    Update current logged in user
+// @route   PUT /api/auth/me
+// @access  Private
+export const updateMe = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { name, email, avatar, age, occupation } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (avatar !== undefined) user.avatar = avatar;
+    if (age !== undefined) user.age = age;
+    if (occupation !== undefined) user.occupation = occupation;
+    await user.save();
+    res.status(200).json({
+      success: true,
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        age: user.age,
+        occupation: user.occupation,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating user',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import User from '../models/User';

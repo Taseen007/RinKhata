@@ -6,6 +6,8 @@ export interface IUser extends Document {
   email: string;
   password: string;
   avatar?: string;
+  age?: number | null;
+  occupation?: string;
   createdAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
@@ -36,6 +38,14 @@ const userSchema = new Schema<IUser>(
       select: false,
     },
     avatar: {
+      type: String,
+      default: '',
+    },
+    age: {
+      type: Number,
+      default: null,
+    },
+    occupation: {
       type: String,
       default: '',
     },

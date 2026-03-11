@@ -93,6 +93,22 @@ export const createWallet = async (req: AuthRequest, res: Response): Promise<voi
 
     const { name, type, balance, currency } = req.body;
 
+    // Prevent duplicate cash wallets: update balance if exists
+    if (type === 'cash') {
+      const existingCashWallet = await Wallet.findOne({ userId: req.user._id, type: 'cash' });
+      if (existingCashWallet) {
+        existingCashWallet.balance += balance || 0;
+        // Do NOT update name for cash wallet
+        if (currency) existingCashWallet.currency = currency;
+        await existingCashWallet.save();
+        return res.status(200).json({
+          success: false,
+          message: 'Cash wallet already exists. Balance updated.',
+          data: existingCashWallet,
+        });
+      }
+    }
+
     const wallet = await Wallet.create({
       userId: req.user._id,
       name,
@@ -132,10 +148,12 @@ export const updateWallet = async (req: AuthRequest, res: Response): Promise<voi
       return;
     }
 
-    const { name, balance } = req.body;
+
+    const { name, balance, type } = req.body;
 
     if (name) wallet.name = name;
     if (balance !== undefined) wallet.balance = balance;
+    if (type) wallet.type = type;
 
     await wallet.save();
 
