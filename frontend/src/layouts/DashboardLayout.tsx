@@ -9,7 +9,9 @@ import {
 	Settings,
 	HelpCircle,
 	Search,
-	MoreHorizontal
+	MoreHorizontal,
+	Menu,
+	ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGetMe } from '@/hooks/useAuth';
@@ -20,6 +22,7 @@ const DashboardLayout = () => {
 	const user = userData?.data;
 	const navigate = useNavigate();
 	const [dropdownOpen, setDropdownOpen] = useState(false);
+	const [isExpanded, setIsExpanded] = useState(true);
 
 	// Close dropdown on outside click
 	useEffect(() => {
@@ -33,11 +36,17 @@ const DashboardLayout = () => {
 		return () => document.removeEventListener('mousedown', handler);
 	}, [dropdownOpen]);
 
-	const navigation = [
+	const mainNavigation = [
 		{ name: 'Dashboard', href: '/', icon: LayoutDashboard },
 		{ name: 'Loans', href: '/loans', icon: FileText },
 		{ name: 'Wallets', href: '/wallets', icon: Wallet },
 		{ name: 'Transactions', href: '/transactions', icon: ArrowLeftRight },
+	];
+
+	const systemNavigation = [
+		{ name: 'Settings', href: '/settings', icon: Settings },
+		{ name: 'Get Help', href: '#', icon: HelpCircle },
+		{ name: 'Search', href: '#', icon: Search },
 	];
 
 	const handleLogout = () => {
@@ -46,148 +55,209 @@ const DashboardLayout = () => {
 	};
 
 	// Get page title from current path
-	const currentPage = navigation.find(item => 
+	const currentPage = [...mainNavigation, ...systemNavigation].find(item => 
 		item.href === '/' ? location.pathname === '/' : location.pathname.startsWith(item.href)
 	);
 
 	return (
-		<div className="flex bg-background min-h-screen">
+		<div className="flex bg-[#020617] min-h-screen font-['Inter']">
 			{/* Sidebar */}
-			<aside className="flex flex-col w-[260px] border-r border-sidebar-border bg-sidebar shrink-0 h-full">
-				{/* Logo */}
-				<div className="flex items-center gap-3 px-5 h-16 border-b border-sidebar-border">
-					<img src="/logo.png" alt="Rinখাতা" className="w-14 h-14 object-contain" />
-					<span className="text-base font-semibold text-sidebar-accent-foreground">Rinখাতা</span>
+			<aside 
+				className={cn(
+					"flex flex-col border-r border-[#1E293B] bg-[#020617] shrink-0 h-full transition-all duration-250 ease-in-out z-40 overflow-hidden",
+					isExpanded ? "w-[240px]" : "w-[72px]"
+				)}
+			>
+				{/* 3. Logo Section */}
+				<div className={cn(
+					"flex items-center h-16 border-b border-[#1E293B] transition-all duration-250",
+					isExpanded ? "px-4 gap-3" : "justify-center px-0"
+				)}>
+					<img src="/logo.png" alt="Rinখাতা" className="w-[28px] h-[28px] object-contain shrink-0" />
+					{isExpanded && (
+						<span className="text-[18px] font-semibold text-[#E2E8F0] whitespace-nowrap animate-in fade-in duration-300">
+							Rinখাতা
+						</span>
+					)}
 				</div>
 
-				{/* Navigation */}
-				<nav className="px-3 py-4 space-y-1 overflow-y-auto">
-					{navigation.map((item) => {
-						const isActive = item.href === '/' 
-							? location.pathname === '/' 
-							: location.pathname.startsWith(item.href);
-						return (
-							<Link
-								key={item.name}
-								to={item.href}
-								className={cn(
-									"flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors",
-									isActive
-										? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-										: 'text-sidebar-foreground hover:bg-sidebar-hover hover:text-foreground'
+				{/* Sidebar Content (Scrollable) */}
+				<div className="flex-1 overflow-y-auto no-scrollbar py-4 px-3 space-y-6">
+					{/* 4. MAIN Navigation */}
+					<div className="space-y-1">
+						{isExpanded && (
+							<p className="px-3 mb-2 text-[10px] font-bold text-[#475569] uppercase tracking-wider animate-in fade-in duration-300">
+								Main
+							</p>
+						)}
+						{mainNavigation.map((item) => {
+							const isActive = item.href === '/' 
+								? location.pathname === '/' 
+								: location.pathname.startsWith(item.href);
+							return (
+								<Link
+									key={item.name}
+									to={item.href}
+									title={!isExpanded ? item.name : ""}
+									className={cn(
+										"group flex items-center h-[44px] rounded-[10px] transition-all duration-200",
+										isExpanded ? "px-3 gap-3" : "justify-center px-0",
+										isActive
+											? 'bg-[#2563EB] text-white'
+											: 'text-[#94A3B8] hover:bg-[#1E293B] hover:text-[#E2E8F0] hover:translate-x-[2px]'
+									)}
+								>
+									<item.icon className="w-[20px] h-[20px] shrink-0" />
+									{isExpanded && (
+										<span className="text-sm font-medium whitespace-nowrap animate-in fade-in duration-300">
+											{item.name}
+										</span>
+									)}
+								</Link>
+							);
+						})}
+					</div>
+
+					{/* 4. SYSTEM Navigation */}
+					<div className="space-y-1">
+						{isExpanded && (
+							<p className="px-3 mb-2 text-[10px] font-bold text-[#475569] uppercase tracking-wider animate-in fade-in duration-300">
+								System
+							</p>
+						)}
+						{systemNavigation.map((item) => {
+							const isActive = location.pathname.startsWith(item.href) && item.href !== '#';
+							return (
+								<Link
+									key={item.name}
+									to={item.href}
+									title={!isExpanded ? item.name : ""}
+									className={cn(
+										"group flex items-center h-[44px] rounded-[10px] transition-all duration-200",
+										isExpanded ? "px-3 gap-3" : "justify-center px-0",
+										isActive
+											? 'bg-[#2563EB] text-white'
+											: 'text-[#94A3B8] hover:bg-[#1E293B] hover:text-[#E2E8F0] hover:translate-x-[2px]'
+									)}
+								>
+									<item.icon className="w-[20px] h-[20px] shrink-0" />
+									{isExpanded && (
+										<span className="text-sm font-medium whitespace-nowrap animate-in fade-in duration-300">
+											{item.name}
+										</span>
+									)}
+								</Link>
+							);
+						})}
+					</div>
+				</div>
+
+				{/* 8. Profile Section (Sticky Bottom) */}
+				<div className="mt-auto border-t border-[#1E293B] bg-[#020617] relative">
+					<div className="p-3" id="sidebar-user-dropdown">
+						{/* Dropdown menu */}
+						{dropdownOpen && (
+							<div className={cn(
+								"absolute bottom-full mb-2 z-50 bg-[#020617] border border-[#1E293B] rounded-[10px] shadow-2xl py-2 animate-in fade-in slide-in-from-bottom-2 duration-200",
+								isExpanded ? "left-3 w-[214px]" : "left-3 w-[180px]"
+							)}>
+								<button
+									className="block w-full text-left px-4 py-2 text-sm text-[#E2E8F0] hover:bg-[#1E293B] transition-colors"
+									onClick={() => { setDropdownOpen(false); navigate('/profile'); }}
+								>
+									View Profile
+								</button>
+								<button
+									className="block w-full text-left px-4 py-2 text-sm text-[#E2E8F0] hover:bg-[#1E293B] transition-colors"
+									onClick={() => { setDropdownOpen(false); navigate('/settings'); }}
+								>
+									Settings
+								</button>
+								<div className="h-px bg-[#1E293B] my-2" />
+								<button
+									className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-[#1E293B] transition-colors"
+									onClick={() => { setDropdownOpen(false); handleLogout(); }}
+								>
+									Logout
+								</button>
+							</div>
+						)}
+						
+						<button
+							className={cn(
+								"flex items-center rounded-lg w-full hover:bg-[#1E293B] transition-all duration-200 focus:outline-none h-[48px]",
+								isExpanded ? "px-2 gap-3" : "justify-center px-0"
+							)}
+							onClick={() => setDropdownOpen((v) => !v)}
+							title={!isExpanded ? user?.name : ""}
+						>
+							<div className="shrink-0 relative">
+								{user?.avatar ? (
+									<img
+										src={user.avatar}
+										alt="User avatar"
+										className="w-8 h-8 rounded-full object-cover border border-[#334155]"
+									/>
+								) : (
+									<div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#2563EB] text-white text-xs font-bold">
+										{user?.name?.charAt(0)?.toUpperCase() || 'U'}
+									</div>
 								)}
-							>
-								<item.icon className="w-4 h-4" />
-								{item.name}
-							</Link>
-						);
-					})}
-				</nav>
-
-				{/* Spacer to push bottom section and user card to bottom */}
-				<div className="flex-1" />
-
-				{/* Bottom Section */}
-				<div className="px-3 py-3 space-y-1 border-t border-sidebar-border">
-					<Link to="/settings" className="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-lg text-sidebar-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors text-left">
-						<Settings className="w-4 h-4" />
-						Settings
-					</Link>
-					<button className="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-lg text-sidebar-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors text-left">
-						<HelpCircle className="w-4 h-4" />
-						Get Help
-					</button>
-					<button className="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-lg text-sidebar-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors text-left">
-						<Search className="w-4 h-4" />
-						Search
-					</button>
+								<div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-[#020617] rounded-full" />
+							</div>
+							
+							{isExpanded && (
+								<>
+									<div className="flex-1 min-w-0 text-left animate-in fade-in duration-300">
+										<p className="text-sm font-semibold text-[#E2E8F0] truncate leading-tight">
+											{user?.name || 'User'}
+										</p>
+										<p className="text-[11px] text-[#94A3B8] truncate">
+											{user?.email || ''}
+										</p>
+									</div>
+									<ChevronDown className={cn("w-4 h-4 text-[#94A3B8] transition-transform duration-200 shrink-0", dropdownOpen && "rotate-180")} />
+								</>
+							)}
+						</button>
+					</div>
 				</div>
-
-				{/* User info with dropdown, always docked at bottom */}
-				   <div className="px-3 py-3 border-t border-sidebar-border relative">
-					   <div className="relative flex flex-col-reverse items-stretch" id="sidebar-user-dropdown">
-						   {/* Dropdown menu above user button */}
-						   {dropdownOpen && (
-							   <div className="absolute left-24 bottom-full mb-2 min-w-[180px] z-50 bg-sidebar border border-sidebar-border rounded-lg shadow-lg py-2 animate-fade-in">
-								   <button
-									   className="block w-full text-left px-4 py-2 text-sm hover:bg-sidebar-hover hover:text-foreground transition-colors"
-									   onClick={() => { setDropdownOpen(false); navigate('/profile'); }}
-								   >
-									   View Profile
-								   </button>
-								   <button
-									   className="block w-full text-left px-4 py-2 text-sm hover:bg-sidebar-hover hover:text-foreground transition-colors"
-									   onClick={() => { setDropdownOpen(false); handleLogout(); }}
-								   >
-									   Logout
-								   </button>
-							   </div>
-						   )}
-						   <button
-							   className="flex items-center gap-3 px-3 py-2 rounded-lg w-full hover:bg-sidebar-hover transition-colors focus:outline-none"
-							   onClick={() => setDropdownOpen((v) => !v)}
-							   aria-haspopup="true"
-							   aria-expanded={dropdownOpen}
-						   >
-							   {user?.avatar ? (
-								   <img
-									   src={user.avatar}
-									   alt="User avatar"
-									   className="w-8 h-8 rounded-lg object-cover border border-sidebar-border"
-								   />
-							   ) : (
-								   <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-secondary text-foreground text-sm font-semibold">
-									   {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-								   </div>
-							   )}
-							   <div className="flex-1 min-w-0 text-left">
-								   <p className="text-sm font-medium text-sidebar-accent-foreground truncate">
-									   {user?.name || 'User'}
-								   </p>
-								   <p className="text-xs text-sidebar-foreground truncate">
-									   {user?.email || ''}
-								   </p>
-							   </div>
-							   <svg className={cn("w-4 h-4 text-sidebar-foreground transition-transform", dropdownOpen && "rotate-180")}
-								   fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-								   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-							   </svg>
-						   </button>
-					   </div>
-				   </div>
 			</aside>
 
 			{/* Main Content */}
-			   <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+			<div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
 				{/* Top Header */}
-				<header className="flex items-center justify-between h-16 px-6 border-b border-border bg-background shrink-0">
-					<div className="flex items-center gap-2">
-						<MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-						<span className="text-sm font-medium">{currentPage?.name || 'Dashboard'}</span>
+				<header className="flex items-center h-16 px-6 border-b border-[#1E293B] bg-[#020617] shrink-0">
+					<div className="flex items-center gap-4">
+						{/* 2. Sidebar Toggle Button */}
+						<button 
+							onClick={() => setIsExpanded(!isExpanded)}
+							className="p-2 -ml-2 rounded-lg hover:bg-[#1E293B] text-[#94A3B8] hover:text-[#E2E8F0] transition-colors"
+						>
+							<Menu className="w-5 h-5" />
+						</button>
+						<div className="flex items-center gap-2">
+							<MoreHorizontal className="w-4 h-4 text-[#475569]" />
+							<span className="text-sm font-medium text-[#E2E8F0]">{currentPage?.name || 'Dashboard'}</span>
+						</div>
 					</div>
 				</header>
 
-				   {/* Content area */}
-				   <main className="flex-1 overflow-y-auto p-6 pb-32">
-					   <Outlet />
-				   </main>
-				   {/* Responsive Footer: fixed only if content is short */}
-				   <footer className="border-t border-border-light pt-6 pb-4 text-center text-sm mt-0 w-full bg-background
-					   absolute bottom-0 left-0 right-0
-					   md:static md:relative">
-					   <p className="mb-2 text-foreground/80">
-						   © 2026 Rinখাতা (ঋণখাতা). All rights reserved.
-					   </p>
-					   <p className="text-muted-foreground mb-3">
-						   Track loans. Manage repayments. Stay financially organized.
-					   </p>
-					   <div className="flex justify-center gap-6 text-sm text-foreground/60">
-						   <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
-						   <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>
-						   <a href="#" className="hover:text-primary transition-colors">Support</a>
-					   </div>
-				   </footer>
-			   </div>
+				{/* Content area */}
+				<main className="flex-1 overflow-y-auto p-6 bg-[#020617] relative">
+					<div className="absolute inset-0 z-0 pointer-events-none" style={{
+						background: 'radial-gradient(circle at 50% 50%, rgba(37,99,235,0.03), transparent 70%)'
+					}} />
+					<div className="relative z-10">
+						<Outlet />
+					</div>
+				</main>
+				
+				{/* Footer */}
+				<footer className="border-t border-[#1E293B] py-4 text-center text-[12px] bg-[#020617] text-[#475569]">
+					<p>© 2026 Rinখাতা (ঋণখাতা) • Smart Loan & Debt Tracker</p>
+				</footer>
+			</div>
 		</div>
 	);
 };
