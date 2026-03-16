@@ -19,22 +19,42 @@ const EditProfile: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Helper to convert file to base64
+  const toBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
   // Mutation for updating profile
-    const updateProfile = useMutation({
-      mutationFn: async (formData: { name: string; age?: string | number; occupation?: string; avatar?: string }) => {
+  const updateProfile = useMutation({
+    mutationFn: async (formData: { name: string; age?: string | number; occupation?: string; avatar?: string }) => {
       setSaving(true);
       setError('');
-      // If avatar file is uploaded, handle upload (mock: just use local URL)
-        let avatarUrl = formData.avatar;
-        if (avatarFile) {
-          avatarUrl = URL.createObjectURL(avatarFile);
+      
+      let avatarUrl = formData.avatar;
+      
+      // If a new file is selected, convert it to base64 for persistence
+      if (avatarFile) {
+        try {
+          avatarUrl = await toBase64(avatarFile);
+        } catch (err) {
+          console.error('Error converting file to base64:', err);
         }
-        const res = await authService.updateMe({
-          name: formData.name,
-          age: formData.age,
-          occupation: formData.occupation,
-          avatar: avatarUrl,
-        });
+      } else {
+        // If no new file is selected, keep the current avatarUrl
+        avatarUrl = user?.avatar || '';
+      }
+
+      const res = await authService.updateMe({
+        name: formData.name,
+        age: formData.age,
+        occupation: formData.occupation,
+        avatar: avatarUrl,
+      });
       setSaving(false);
       return res;
     },
