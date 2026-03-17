@@ -1,6 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import type { MouseEvent } from 'react';
 import { 
 	LayoutDashboard, 
 	Wallet, 
@@ -27,7 +26,7 @@ const DashboardLayout = () => {
 	// Close dropdown on outside click
 	useEffect(() => {
 		if (!dropdownOpen) return;
-		const handler = (e: MouseEvent | globalThis.MouseEvent) => {
+		const handler = (e: globalThis.MouseEvent) => {
 			if (!document.getElementById('sidebar-user-dropdown')?.contains(e.target as Node)) {
 				setDropdownOpen(false);
 			}
@@ -44,7 +43,6 @@ const DashboardLayout = () => {
 	];
 
 	const systemNavigation = [
-		{ name: 'Settings', href: '/settings', icon: Settings },
 		{ name: 'Get Help', href: '#', icon: HelpCircle },
 		{ name: 'Search', href: '#', icon: Search },
 	];
@@ -64,7 +62,7 @@ const DashboardLayout = () => {
 			{/* Sidebar */}
 			<aside 
 				className={cn(
-					"flex flex-col border-r border-[#1E293B] bg-[#020617] shrink-0 h-full transition-all duration-250 ease-in-out z-40 overflow-hidden",
+					"flex flex-col border-r border-[#1E293B] bg-[#020617] shrink-0 h-full transition-all duration-250 ease-in-out z-40",
 					isExpanded ? "w-[240px]" : "w-[72px]"
 				)}
 			>
@@ -153,40 +151,43 @@ const DashboardLayout = () => {
 				</div>
 
 				{/* 8. Profile Section (Sticky Bottom) */}
-				<div className="mt-auto border-t border-[#1E293B] bg-[#020617] relative">
+				<div className="mt-auto border-t border-[#1E293B] bg-[#020617]">
 					<div className="p-3" id="sidebar-user-dropdown">
-						{/* Dropdown menu */}
+						{/* Inline Menu (Pushes items up instead of hiding them) */}
 						{dropdownOpen && (
-							<div className={cn(
-								"absolute bottom-full mb-2 z-50 bg-[#020617] border border-[#1E293B] rounded-[10px] shadow-2xl py-2 animate-in fade-in slide-in-from-bottom-2 duration-200",
-								isExpanded ? "left-3 w-[214px]" : "left-3 w-[180px]"
-							)}>
-								<button
-									className="block w-full text-left px-4 py-2 text-sm text-[#E2E8F0] hover:bg-[#1E293B] transition-colors"
-									onClick={() => { setDropdownOpen(false); navigate('/profile'); }}
-								>
-									View Profile
-								</button>
-								<button
-									className="block w-full text-left px-4 py-2 text-sm text-[#E2E8F0] hover:bg-[#1E293B] transition-colors"
-									onClick={() => { setDropdownOpen(false); navigate('/settings'); }}
-								>
-									Settings
-								</button>
-								<div className="h-px bg-[#1E293B] my-2" />
-								<button
-									className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-[#1E293B] transition-colors"
-									onClick={() => { setDropdownOpen(false); handleLogout(); }}
-								>
-									Logout
-								</button>
+							<div className="mb-3 bg-[#0F172A] border border-[#1E293B] rounded-[12px] shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+								<div className="px-4 py-2.5 bg-[#1E293B]/30 border-b border-[#1E293B]">
+									<p className="text-[10px] font-black text-[#E2E8F0] uppercase tracking-[0.15em]">Account Settings</p>
+								</div>
+								<div className="p-1">
+									<button
+										className="flex items-center gap-3 w-full text-left px-3 py-2 text-sm text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-[#1E293B] rounded-lg transition-all"
+										onClick={() => { setDropdownOpen(false); navigate('/profile'); }}
+									>
+										View Profile
+									</button>
+									<button
+										className="flex items-center gap-3 w-full text-left px-3 py-2 text-sm text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-[#1E293B] rounded-lg transition-all"
+										onClick={() => { setDropdownOpen(false); navigate('/settings'); }}
+									>
+										Settings
+									</button>
+									<div className="h-px bg-[#1E293B] my-1 mx-2" />
+									<button
+										className="flex items-center gap-3 w-full text-left px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+										onClick={() => { setDropdownOpen(false); handleLogout(); }}
+									>
+										Logout
+									</button>
+								</div>
 							</div>
 						)}
 						
 						<button
 							className={cn(
 								"flex items-center rounded-lg w-full hover:bg-[#1E293B] transition-all duration-200 focus:outline-none h-[48px]",
-								isExpanded ? "px-2 gap-3" : "justify-center px-0"
+								isExpanded ? "px-2 gap-3" : "justify-center px-0",
+								dropdownOpen && "bg-[#1E293B]"
 							)}
 							onClick={() => setDropdownOpen((v) => !v)}
 							title={!isExpanded ? user?.name : ""}
@@ -254,8 +255,10 @@ const DashboardLayout = () => {
 				</main>
 				
 				{/* Footer */}
-				<footer className="border-t border-[#1E293B] py-4 text-center text-[12px] bg-[#020617] text-[#475569]">
-					<p>© 2026 Rinখাতা (ঋণখাতা) • Smart Loan & Debt Tracker</p>
+				<footer className="border-t border-[#1E293B] py-6 text-center bg-[#020617] relative z-10">
+					<p className="text-[12px] font-medium text-[#94A3B8] hover:text-[#E2E8F0] transition-colors cursor-default select-none">
+						© 2026 <span className="text-[#2563EB]">Rinখাতা</span> (ঋণখাতা) • Smart Loan & Debt Tracker
+					</p>
 				</footer>
 			</div>
 		</div>

@@ -1,381 +1,383 @@
-import { useLoanStats, useLoans } from '@/hooks/useLoans'
+import { useLoanStats } from '@/hooks/useLoans'
 import { useTransactions } from '@/hooks/useTransactions'
 import { useWallets } from '@/hooks/useWallets'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
-import { TrendingUp, TrendingDown, Wallet, HandCoins, Landmark, ArrowUpRight, ArrowDownRight } from 'lucide-react'
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { useMemo } from 'react'
+import { RefreshCcw, CheckCircle2, ArrowRight } from 'lucide-react'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { useMemo, useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import type { Transaction } from '@/services/transactionService'
+
+const CountUp = ({ end, duration = 2000, prefix = 'BDT ' }: { end: number; duration?: number; prefix?: string }) => {
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    let startTime: number | null = null
+    const step = (timestamp: number) => {
+      if (!startTime) startTime = timestamp
+      const progress = Math.min((timestamp - startTime) / duration, 1)
+      const easeOutQuad = (t: number) => t * (2 - t)
+      setCount(Math.floor(easeOutQuad(progress) * end))
+      if (progress < 1) {
+        window.requestAnimationFrame(step)
+      }
+    }
+    window.requestAnimationFrame(step)
+  }, [end, duration])
+
+  return (
+    <span>
+      {prefix}{count.toLocaleString()}
+    </span>
+  )
+}
 
 const Dashboard = () => {
-  const { data: statsData, isLoading: statsLoading, error: statsError } = useLoanStats()
-  const { data: loansData, isLoading: loansLoading, error: loansError } = useLoans({ status: 'Active' })
-  const { data: transactionsData, isLoading: transactionsLoading, error: transactionsError } = useTransactions()
-  const { data: walletsData, isLoading: walletsLoading } = useWallets()
-  const { data: allLoansData } = useLoans({})
+  const { data: statsData, isLoading: statsLoading } = useLoanStats()
+  const { data: transactionsData, isLoading: transactionsLoading } = useTransactions()
+  const { data: walletsData } = useWallets()
 
-  // Error state
-  if (statsError || loansError || transactionsError) {
-    const errorMessage = (statsError as any)?.response?.data?.message || 
-                         (loansError as any)?.response?.data?.message || 
-                         (transactionsError as any)?.response?.data?.message ||
-                         (statsError as any)?.message ||
-                         (loansError as any)?.message ||
-                         (transactionsError as any)?.message ||
-                         'Failed to load data'
+  const [currentTime, setCurrentTime] = useState(new Date())
 
-    return (
-      <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-6">
-        <h2 className="text-lg font-semibold text-destructive mb-2">Error Loading Dashboard</h2>
-        <p className="text-sm text-muted-foreground mb-4">{errorMessage}</p>
-        <div className="text-sm text-muted-foreground space-y-1 mb-4">
-          <p className="font-medium mb-1">Troubleshooting:</p>
-          <ul className="list-disc list-inside space-y-1">
-            <li>Make sure backend server is running on <code className="bg-secondary px-1.5 py-0.5 rounded text-xs">http://localhost:5000</code></li>
-            <li>Check browser console (F12) for detailed errors</li>
-            <li>Try logging out and logging in again</li>
-          </ul>
-        </div>
-        <button
-          onClick={() => {
-            localStorage.removeItem('token')
-            window.location.href = '/login'
-          }}
-          className="px-4 py-2 bg-destructive text-destructive-foreground text-sm rounded-lg hover:bg-destructive/90 transition-colors"
-        >
-          Logout and Try Again
-        </button>
-      </div>
-    )
-  }
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const stats = statsData?.data
-  const recentLoans = loansData?.data?.slice(0, 5) || []
-  const recentTransactions = transactionsData?.data?.slice(0, 5) || []
   const wallets = walletsData?.data || []
-  const allLoans = allLoansData?.data || []
+  const recentTransactions = transactionsData?.data?.slice(0, 5) || []
 
-  // Calculate wallet balance breakdown by type
-  const walletBreakdown = wallets.reduce((acc, wallet) => {
-    const type = wallet.type.toLowerCase()
-    if (!acc[type]) acc[type] = 0
-    acc[type] += wallet.balance
-    return acc
-  }, {} as Record<string, number>)
+  const totalWalletBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0)
+  const netBalance = stats?.netBalance || 0
 
-  const totalWalletBalance = Object.values(walletBreakdown).reduce((sum, val) => sum + val, 0)
+  // Animation delay calculation
+  const getDelay = (index: number) => ({ animationDelay: `${index * 0.15}s` })
 
-  // Calculate lent/borrowed breakdowns
-  const lentBreakdown = allLoans
-    .filter(loan => loan.loanType === 'Lent' && loan.status === 'Active')
-    .reduce((acc, loan) => {
-      const type = loan.walletId?.type?.toLowerCase() || 'unknown'
-      if (!acc[type]) acc[type] = 0
-      acc[type] += loan.balanceAmount
-      return acc
-    }, {} as Record<string, number>)
-
-  const borrowedBreakdown = allLoans
-    .filter(loan => loan.loanType === 'Borrowed' && loan.status === 'Active')
-    .reduce((acc, loan) => {
-      const type = loan.walletId?.type?.toLowerCase() || 'unknown'
-      if (!acc[type]) acc[type] = 0
-      acc[type] += loan.balanceAmount
-      return acc
-    }, {} as Record<string, number>)
-
-  // Build chart data from transactions
   const chartData = useMemo(() => {
     const txs = transactionsData?.data || []
     if (txs.length === 0) return []
+    
+    // Create map of months for the last 6 months up to now
+    const monthData: Record<string, { lent: number; borrowed: number }> = {}
+    const months: string[] = []
+    
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date()
+      d.setMonth(d.getMonth() - i)
+      const monthName = d.toLocaleString('en-US', { month: 'short' })
+      months.push(monthName)
+      monthData[monthName] = { lent: 0, borrowed: 0 }
+    }
 
-    const grouped: Record<string, { lent: number; borrowed: number }> = {}
-    txs.forEach(tx => {
-      const date = new Date(tx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      if (!grouped[date]) grouped[date] = { lent: 0, borrowed: 0 }
-      if (tx.loanId?.loanType === 'Lent') {
-        grouped[date].lent += tx.amount
-      } else {
-        grouped[date].borrowed += tx.amount
+    // Process real transactions
+    txs.forEach((tx: Transaction) => {
+      const date = new Date(tx.createdAt)
+      const monthName = date.toLocaleString('en-US', { month: 'short' })
+      if (monthData[monthName]) {
+        if (tx.type === 'Loan' || tx.type === 'Payment') {
+          // Determine if lent or borrowed based on loan metadata
+          // Assuming amount is always positive, we check tx.type or loan type
+          // For now, simple grouping by type if available, otherwise mock-ish but based on real count
+          if (tx.loanId?.loanType === 'Lent') {
+            monthData[monthName].lent += tx.amount
+          } else {
+            monthData[monthName].borrowed += tx.amount
+          }
+        }
       }
     })
 
-    return Object.entries(grouped)
-      .map(([date, vals]) => ({ date, ...vals }))
-      .slice(-15)
+    return months.map(name => ({
+      name,
+      lent: monthData[name].lent,
+      borrowed: monthData[name].borrowed
+    }))
   }, [transactionsData])
 
-  const netBalance = stats?.netBalance || 0
-
-  // Stat cards config
   const statCards = [
     {
-      title: 'Available Balance',
-      value: formatCurrency(totalWalletBalance),
-      subtitle: 'Total money in your wallets',
-      description: `${wallets.length} wallet${wallets.length !== 1 ? 's' : ''} active`,
-      icon: Wallet,
-      trend: totalWalletBalance >= 0 ? 'up' as const : 'down' as const,
-      loading: walletsLoading,
-      breakdown: walletBreakdown,
+      title: 'AVAILABLE BALANCE',
+      value: totalWalletBalance,
+      description: `${wallets.length} wallets active`,
+      color: 'border-t-emerald-500'
     },
     {
-      title: 'Total Lent',
-      value: formatCurrency(stats?.totalLentRemaining || 0),
-      subtitle: 'Money you lent to others',
+      title: 'TOTAL LENT',
+      value: stats?.totalLentRemaining || 0,
       description: `${stats?.activeLoans || 0} active loans`,
-      icon: ArrowUpRight,
-      trend: 'up' as const,
-      loading: statsLoading,
-      breakdown: lentBreakdown,
+      color: 'border-t-blue-500'
     },
     {
-      title: 'Total Borrowed',
-      value: formatCurrency(stats?.totalBorrowedRemaining || 0),
-      subtitle: 'Money you borrowed from others',
+      title: 'TOTAL BORROWED',
+      value: stats?.totalBorrowedRemaining || 0,
       description: `${stats?.settledLoans || 0} settled loans`,
-      icon: ArrowDownRight,
-      trend: 'down' as const,
-      loading: statsLoading,
-      breakdown: borrowedBreakdown,
+      color: 'border-t-red-500'
     },
     {
-      title: 'Net Balance',
-      value: formatCurrency(netBalance),
-      subtitle: netBalance >= 0 ? 'You are owed this amount' : 'You owe this amount',
+      title: 'NET BALANCE',
+      value: netBalance,
       description: `${stats?.totalLoans || 0} total loans`,
-      icon: Landmark,
-      trend: netBalance >= 0 ? 'up' as const : 'down' as const,
-      loading: statsLoading,
-      breakdown: {},
-    },
+      color: 'border-t-cyan-500'
+    }
   ]
 
-  const BreakdownRow = ({ label, amount }: { label: string; amount: number }) => (
-    <div className="flex justify-between text-xs">
-      <span className="text-muted-foreground capitalize">{label}:</span>
-      <span className="font-medium text-foreground">{formatCurrency(amount)}</span>
-    </div>
-  )
-
   return (
-    <div className="space-y-6">
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((card) => (
-          <div key={card.title} className="rounded-xl border border-primary/20 bg-card p-5">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm text-muted-foreground">{card.title}</p>
-              <div className={cn(
-                "flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded",
-                card.trend === 'up' ? 'text-emerald-400' : 'text-red-400'
-              )}>
-                {card.trend === 'up' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-              </div>
+    <div className="space-y-8 animate-in fade-in duration-500 max-w-[1400px] mx-auto">
+      {/* Header with Live Pulse */}
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse-green" />
+            <h1 className="text-2xl font-bold text-[#E2E8F0]">Lending Dashboard</h1>
+          </div>
+          <p className="text-sm text-[#94A3B8] mt-1">Overview of all wallet and loan activity</p>
+        </div>
+        <div className="text-right">
+          <div className="text-sm text-[#E2E8F0] font-bold">
+            {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </div>
+          <div className="text-[11px] text-[#475569] font-bold uppercase tracking-wider">
+            {currentTime.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </div>
+        </div>
+      </div>
+
+      {/* Stat Cards Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statCards.map((card, i) => (
+          <div 
+            key={card.title} 
+            style={getDelay(i)}
+            className={cn(
+              "opacity-0 animate-slide-up bg-[#1E293B] border border-[#334155] rounded-2xl p-6 shadow-xl",
+              "border-t-2", card.color,
+              "hover:translate-y-[-8px] hover:scale-[1.02] hover:shadow-2xl hover:border-[#475569] transition-all duration-500 ease-out cursor-default group"
+            )}
+          >
+            <p className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-4 group-hover:text-[#94A3B8] transition-colors">{card.title}</p>
+            <div className="space-y-1">
+              <h2 className="text-3xl font-bold text-white leading-tight group-hover:scale-[1.05] origin-left transition-transform duration-500">
+                {statsLoading ? (
+                  <div className="h-9 w-32 bg-slate-700 animate-pulse rounded" />
+                ) : (
+                  <CountUp end={card.value} />
+                )}
+              </h2>
+              <p className="text-sm text-[#94A3B8] group-hover:text-[#E2E8F0] transition-colors">{card.description}</p>
             </div>
-            {card.loading ? (
-              <div className="h-8 bg-secondary animate-pulse rounded mb-2" />
-            ) : (
-              <p className="text-2xl font-bold tracking-tight">{card.value}</p>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">{card.subtitle}</p>
-            <p className="text-xs text-muted-foreground">{card.description}</p>
-            {Object.keys(card.breakdown).length > 0 && (
-              <div className="mt-3 pt-3 border-t border-border space-y-1">
-                {Object.entries(card.breakdown).map(([key, val]) => (
-                  <BreakdownRow key={key} label={key} amount={val} />
-                ))}
-              </div>
-            )}
           </div>
         ))}
       </div>
 
-      {/* Transaction Activity Chart */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-base font-semibold">Transaction Activity</h3>
-            <p className="text-sm text-muted-foreground">Lent vs Borrowed over time</p>
+      {/* Middle Section: Chart and Bottom Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Transaction Activity Chart Section */}
+        <div 
+          style={getDelay(4)}
+          className="lg:col-span-2 opacity-0 animate-slide-up bg-[#1E293B] border border-[#334155] rounded-2xl p-8 shadow-xl"
+        >
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h3 className="text-lg font-bold text-white">Transaction Activity</h3>
+              <p className="text-sm text-[#94A3B8]">Lent vs Borrowed over time</p>
+            </div>
+            <div className="flex items-center gap-6 text-xs font-semibold">
+              <div className="flex items-center gap-2 text-[#2563EB]">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#2563EB]" /> Lent
+              </div>
+              <div className="flex items-center gap-2 text-[#EF4444]">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#EF4444]" /> Borrowed
+              </div>
+            </div>
+          </div>
+          
+          <div className="h-[300px] w-full">
+          {transactionsLoading ? (
+            <div className="h-full w-full bg-slate-700 animate-pulse rounded-lg" />
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} key={`chart-${chartData.length}`}>
+                <defs>
+                  <linearGradient id="colorLent" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2563EB" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#2563EB" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorBorrowed" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#EF4444" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.5} />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false}
+                  tick={{ fill: '#475569', fontSize: 12, fontWeight: 500 }}
+                  dy={10}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#475569', fontSize: 10 }}
+                  tickFormatter={(value) => `৳${value > 1000 ? (value/1000).toFixed(0) + 'k' : value}`}
+                />
+                <Tooltip
+                  cursor={{ stroke: '#334155', strokeWidth: 2 }}
+                  contentStyle={{
+                    backgroundColor: '#0F172A',
+                    border: '1px solid #334155',
+                    borderRadius: '12px',
+                    color: '#F8FAFC',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                  }}
+                  formatter={(value: number) => [`৳${value.toLocaleString()}`, '']}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="lent" 
+                  stroke="#2563EB" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorLent)" 
+                  isAnimationActive={true}
+                  animationDuration={3500}
+                  animationBegin={500}
+                  animationEasing="ease-in-out"
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="borrowed" 
+                  stroke="#EF4444" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorBorrowed)" 
+                  isAnimationActive={true}
+                  animationDuration={3500}
+                  animationBegin={800}
+                  animationEasing="ease-in-out"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+        </div>
+
+        {/* Vertical Status Cards */}
+        <div className="space-y-6">
+          {/* Active Loans Card */}
+          <div 
+            style={getDelay(5)}
+            className="opacity-0 animate-slide-up bg-[#1E293B] border border-[#334155] rounded-2xl p-6 shadow-xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Active Loans</p>
+              <div className="w-8 h-8 rounded-full bg-[#0F172A] flex items-center justify-center border border-[#334155]">
+                <RefreshCcw className="w-3.5 h-3.5 text-[#94A3B8]" />
+              </div>
+            </div>
+            <h4 className="text-5xl font-bold text-white mb-4">{stats?.activeLoans || 0}</h4>
+            <div className="space-y-2">
+              <div className="h-1.5 w-full bg-[#0F172A] rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-[#2563EB] rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${Math.min(((stats?.activeLoans || 0) / 10) * 100, 100)}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-[#475569] font-bold uppercase">Active Pipeline</p>
+            </div>
+          </div>
+
+          {/* Settled Loans Card */}
+          <div 
+            style={getDelay(6)}
+            className="opacity-0 animate-slide-up bg-[#1E293B] border border-[#334155] rounded-2xl p-6 shadow-xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Settled Loans</p>
+              <div className="w-8 h-8 rounded-full bg-[#0F172A] flex items-center justify-center border border-[#334155]">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              </div>
+            </div>
+            <h4 className="text-5xl font-bold text-white mb-4">{stats?.settledLoans || 0}</h4>
+            <div className="space-y-2">
+              <div className="h-1.5 w-full bg-[#0F172A] rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${Math.min(((stats?.settledLoans || 0) / 20) * 100, 100)}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-[#475569] font-bold uppercase">Monthly Completion</p>
+            </div>
           </div>
         </div>
-        {transactionsLoading ? (
-          <div className="h-[250px] bg-secondary/50 animate-pulse rounded-lg" />
-        ) : chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={250}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="lentGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2563EB" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="borrowedGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis 
-                dataKey="date" 
-                axisLine={false} 
-                tickLine={false}
-                tick={{ fill: '#94A3B8', fontSize: 12 }}
-              />
-              <YAxis 
-                axisLine={false} 
-                tickLine={false}
-                tick={{ fill: '#94A3B8', fontSize: 12 }}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1E293B',
-                  border: '1px solid #334155',
-                  borderRadius: '8px',
-                  color: '#F8FAFC',
-                  fontSize: '12px',
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="lent"
-                stroke="#2563EB"
-                fillOpacity={1}
-                fill="url(#lentGrad)"
-                strokeWidth={2}
-              />
-              <Area
-                type="monotone"
-                dataKey="borrowed"
-                stroke="#EF4444"
-                fillOpacity={1}
-                fill="url(#borrowedGrad)"
-                strokeWidth={2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">
-            No transaction data to display
-          </div>
-        )}
       </div>
 
-      {/* Active Loans Quick Stats */}
-      {!statsLoading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <a href="/loans?status=Active" className="rounded-xl border border-border bg-card p-5 hover:bg-accent/50 transition-colors group">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active Loans</p>
-                <p className="text-3xl font-bold mt-1">{stats?.activeLoans || 0}</p>
-              </div>
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <HandCoins className="w-5 h-5 text-primary" />
-              </div>
-            </div>
-          </a>
-          <a href="/loans?status=Settled" className="rounded-xl border border-border bg-card p-5 hover:bg-accent/50 transition-colors group">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Settled Loans</p>
-                <p className="text-3xl font-bold mt-1">{stats?.settledLoans || 0}</p>
-              </div>
-              <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
-                <Landmark className="w-5 h-5 text-success" />
-              </div>
-            </div>
-          </a>
-        </div>
-      )}
-
-      {/* Recent Loans Table */}
-      <div className="rounded-xl border border-border bg-card">
-        <div className="p-5 border-b border-border">
-          <h3 className="text-base font-semibold">Recent Active Loans</h3>
-        </div>
-        {loansLoading ? (
-          <div className="p-5 space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-12 bg-secondary animate-pulse rounded" />
-            ))}
+      {/* Recent Transactions Section (Restored) */}
+      <div 
+        style={getDelay(7)}
+        className="opacity-0 animate-slide-up bg-[#1E293B] border border-[#334155] rounded-2xl p-8 shadow-xl mb-8"
+      >
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h3 className="text-lg font-bold text-white">Recent Transactions</h3>
+            <p className="text-sm text-[#94A3B8]">Latest money movements</p>
           </div>
-        ) : recentLoans.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Person</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Type</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Amount</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Balance</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentLoans.map((loan) => (
-                  <tr key={loan._id} className="border-b border-border last:border-0 hover:bg-accent/50 transition-colors">
-                    <td className="px-5 py-3 text-sm font-medium">{loan.personName}</td>
-                    <td className="px-5 py-3">
+          <Link to="/transactions" className="flex items-center gap-2 text-xs font-bold text-[#2563EB] hover:text-[#1D4ED8] transition-colors">
+            View All <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="text-left border-b border-[#334155]">
+                <th className="pb-4 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Date</th>
+                <th className="pb-4 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Person</th>
+                <th className="pb-4 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Type</th>
+                <th className="pb-4 text-right text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#334155]/50">
+              {transactionsLoading ? (
+                [...Array(5)].map((_, i) => (
+                  <tr key={i}>
+                    <td colSpan={4} className="py-4">
+                      <div className="h-4 bg-slate-700/50 animate-pulse rounded w-full" />
+                    </td>
+                  </tr>
+                ))
+              ) : recentTransactions.length > 0 ? (
+                recentTransactions.map((tx: Transaction) => (
+                  <tr key={tx._id} className="group hover:bg-[#0F172A]/30 transition-colors">
+                    <td className="py-4 text-sm text-[#E2E8F0] font-medium">{formatDate(tx.createdAt)}</td>
+                    <td className="py-4 text-sm text-[#94A3B8]">{tx.loanId?.personName || 'Unknown'}</td>
+                    <td className="py-4">
                       <span className={cn(
-                        "inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full",
-                        loan.loanType === 'Lent'
-                          ? 'bg-emerald-500/10 text-emerald-400'
-                          : 'bg-red-500/10 text-red-400'
+                        "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter",
+                        tx.loanId?.loanType === 'Lent' ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
                       )}>
-                        {loan.loanType}
+                        {tx.loanId?.loanType === 'Lent' ? 'Lent' : 'Borrowed'}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-sm">{formatCurrency(loan.principalAmount)}</td>
-                    <td className="px-5 py-3 text-sm font-semibold">{formatCurrency(loan.balanceAmount)}</td>
-                    <td className="px-5 py-3 text-sm text-muted-foreground">{formatDate(loan.createdAt)}</td>
+                    <td className={cn(
+                      "py-4 text-sm font-bold text-right",
+                      tx.loanId?.loanType === 'Lent' ? "text-emerald-400" : "text-red-400"
+                    )}>
+                      {tx.loanId?.loanType === 'Lent' ? '+' : '-'}{formatCurrency(tx.amount)}
+                    </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="p-10 text-center text-muted-foreground text-sm">No active loans</div>
-        )}
-      </div>
-
-      {/* Recent Transactions */}
-      <div className="rounded-xl border border-border bg-card">
-        <div className="p-5 border-b border-border">
-          <h3 className="text-base font-semibold">Recent Transactions</h3>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="py-8 text-center text-sm text-[#64748B]">No recent transactions found</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-        {transactionsLoading ? (
-          <div className="p-5 space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-12 bg-secondary animate-pulse rounded" />
-            ))}
-          </div>
-        ) : recentTransactions.length > 0 ? (
-          <div className="divide-y divide-border">
-            {recentTransactions.map((transaction) => {
-              const displayName = transaction.loanId?.personName || 
-                                 transaction.note?.split('-')[1]?.trim() ||
-                                 transaction.note || 
-                                 'Unknown'
-              
-              return (
-                <div key={transaction._id} className="flex items-center justify-between px-5 py-3 hover:bg-accent/50 transition-colors">
-                  <div>
-                    <p className="text-sm font-medium">{displayName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {transaction.type} &bull; {formatDate(transaction.createdAt)}
-                    </p>
-                  </div>
-                  <p className={cn(
-                    "text-sm font-semibold",
-                    transaction.type === 'Loan' ? 'text-warning' : 'text-success'
-                  )}>
-                    {formatCurrency(transaction.amount)}
-                  </p>
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          <div className="p-10 text-center text-muted-foreground text-sm">No transactions yet</div>
-        )}
       </div>
     </div>
   )

@@ -17,6 +17,7 @@ export interface Loan {
   balanceAmount: number
   status: 'Active' | 'Settled'
   purposeNote?: string
+  loanDate: string
   dueDate?: string
   createdAt: string
   updatedAt: string

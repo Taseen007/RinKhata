@@ -2,6 +2,11 @@ import React, { useState } from 'react'
 import { useLogin, useRegister } from '@/hooks/useAuth'
 import { Mail, Lock, User, Eye, EyeOff, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AxiosError } from 'axios'
+
+interface ApiError {
+  message: string
+}
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true)
@@ -32,8 +37,9 @@ const Login = () => {
         await registerMutation.mutateAsync({ name, email, password })
         window.location.href = '/'
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'An error occurred')
+    } catch (err) {
+      const error = err as AxiosError<ApiError>
+      setError(error.response?.data?.message || 'An error occurred')
     }
   }
 
@@ -226,8 +232,10 @@ const Login = () => {
       </div>
 
       {/* 12. Footer */}
-      <footer className="z-10 mt-[40px] text-center">
-        <p className="text-[12px] text-[#475569]">© 2026 Rinখাতা</p>
+      <footer className="z-10 mt-[48px] text-center">
+        <p className="text-[12px] font-medium text-[#94A3B8] hover:text-[#E2E8F0] transition-colors cursor-default select-none">
+          © 2026 <span className="text-[#2563EB]">Rinখাতা</span> (ঋণখাতা) • Smart Loan & Debt Tracker
+        </p>
       </footer>
     </div>
   )

@@ -37,7 +37,7 @@ export const walletService = {
   },
 
   // Create wallet
-  createWallet: async (walletData: CreateWalletData): Promise<any> => {
+  createWallet: async (walletData: CreateWalletData): Promise<{ success: boolean; data: Wallet; message?: string }> => {
     // Map initialBalance to balance for backend
     const payload = {
       name: walletData.name,

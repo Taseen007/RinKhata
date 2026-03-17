@@ -6,7 +6,7 @@ import Wallets from './pages/Wallets'
 import Transactions from './pages/Transactions'
 import Profile from './pages/Profile'
 import EditProfile from './pages/EditProfile'
-import Settings from './pages/Settings.tsx'
+import Settings from './pages/Settings'
 import Login from './pages/Login'
 
 function App() {
