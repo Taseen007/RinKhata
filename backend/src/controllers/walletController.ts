@@ -101,11 +101,12 @@ export const createWallet = async (req: AuthRequest, res: Response): Promise<voi
         // Do NOT update name for cash wallet
         if (currency) existingCashWallet.currency = currency;
         await existingCashWallet.save();
-        return res.status(200).json({
+        res.status(200).json({
           success: false,
           message: 'Cash wallet already exists. Balance updated.',
           data: existingCashWallet,
         });
+        return;
       }
     }
 

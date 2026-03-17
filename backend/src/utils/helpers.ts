@@ -1,11 +1,12 @@
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { config } from '../config/env';
 
 // Generate JWT Token
 export const generateToken = (id: string): string => {
-  return jwt.sign({ id }, config.JWT_SECRET, {
-    expiresIn: config.JWT_EXPIRE,
-  });
+  const options: SignOptions = {
+    expiresIn: config.JWT_EXPIRE as any,
+  };
+  return jwt.sign({ id }, config.JWT_SECRET, options);
 };
 
 // Format currency

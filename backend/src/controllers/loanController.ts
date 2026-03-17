@@ -97,9 +97,9 @@ export const getLoan = async (req: AuthRequest, res: Response): Promise<void> =>
 // @access  Private
 export const createLoan = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       res.status(400).json({
         success: false,
         errors: errors.array(),
@@ -108,6 +108,7 @@ export const createLoan = async (req: AuthRequest, res: Response): Promise<void>
     }
 
     const { personName, personContact, principalAmount, walletId, loanType, purposeNote, dueDate } = req.body;
+    console.log('Creating loan with data:', { personName, personContact, principalAmount, walletId, loanType, purposeNote, dueDate });
 
     const loan = await createLoanWithTransaction(
       req.user._id,
@@ -122,10 +123,10 @@ export const createLoan = async (req: AuthRequest, res: Response): Promise<void>
 
     res.status(201).json({
       success: true,
-      message: 'Loan created successfully',
       data: loan,
     });
   } catch (error) {
+    console.error('Error in createLoan controller:', error);
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Error creating loan',
